@@ -13,6 +13,7 @@ v4l2codecs_sources = [
   'gstv4l2format.c',
   'gstv4l2codecalphadecodebin.c',
   'gstv4l2encoder.c',
+  'gstv4l2codecvp8enc.c',
 ]
 
 v4l2codecs_headers = [
