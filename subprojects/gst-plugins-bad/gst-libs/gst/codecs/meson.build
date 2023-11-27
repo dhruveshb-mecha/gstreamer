@@ -19,6 +19,7 @@ codecs_sources = files(
   'gstvp8frame.c',
   'gsth264encoder.c',
   'gsth264frame.c',
+  'gstratecontroller.c',
 )
 
 codecs_headers = files(
