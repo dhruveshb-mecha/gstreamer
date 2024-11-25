@@ -150,7 +150,13 @@ gst_v4l2_codec_h264_enc_api_check (GstV4l2Encoder * encoder)
     }, {
       SET_ID (V4L2_CID_STATELESS_H264_ENCODE_RC),
       .size = sizeof(struct v4l2_ctrl_h264_encode_rc),
-    }
+    }, {
+      SET_ID (V4L2_CID_STATELESS_H264_SPS),
+      .size = sizeof(struct v4l2_ctrl_h264_sps),
+    }, {
+      SET_ID (V4L2_CID_STATELESS_H264_PPS),
+      .size = sizeof(struct v4l2_ctrl_h264_pps),
+    },
   };
   #undef SET_ID
   /* *INDENT-ON* */
@@ -341,6 +347,60 @@ gst_v4l2_codec_deemulate_nal (guint8 * data, guint size, guint maxsize)
   } while (TRUE);
 
   return size;
+}
+
+static void
+sps_from_v4l2 (GstH264SPS * to, struct v4l2_ctrl_h264_sps *from)
+{
+  to->constraint_set0_flag =
+      !!(from->constraint_set_flags & V4L2_H264_SPS_CONSTRAINT_SET0_FLAG);
+  to->constraint_set1_flag =
+      !!(from->constraint_set_flags & V4L2_H264_SPS_CONSTRAINT_SET1_FLAG);
+  to->constraint_set2_flag =
+      !!(from->constraint_set_flags & V4L2_H264_SPS_CONSTRAINT_SET2_FLAG);
+  to->constraint_set3_flag =
+      !!(from->constraint_set_flags & V4L2_H264_SPS_CONSTRAINT_SET3_FLAG);
+  to->constraint_set4_flag =
+      !!(from->constraint_set_flags & V4L2_H264_SPS_CONSTRAINT_SET4_FLAG);
+  to->constraint_set5_flag =
+      !!(from->constraint_set_flags & V4L2_H264_SPS_CONSTRAINT_SET5_FLAG);
+
+  to->profile_idc = from->profile_idc;
+  to->level_idc = from->level_idc;
+  to->id = from->seq_parameter_set_id;
+  to->chroma_format_idc = from->chroma_format_idc;
+  to->pic_width_in_mbs_minus1 = from->pic_width_in_mbs_minus1;
+  to->pic_height_in_map_units_minus1 = from->pic_height_in_map_units_minus1;
+  to->num_ref_frames = from->max_num_ref_frames;
+  to->num_ref_frames_in_pic_order_cnt_cycle =
+      from->num_ref_frames_in_pic_order_cnt_cycle;
+  to->pic_order_cnt_type = from->pic_order_cnt_type;
+  to->log2_max_frame_num_minus4 = from->log2_max_frame_num_minus4;
+  to->log2_max_pic_order_cnt_lsb_minus4 =
+      from->log2_max_pic_order_cnt_lsb_minus4;
+
+  if (from->flags & V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY)
+    to->frame_mbs_only_flag = 1;
+
+  if (from->flags & V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE)
+    to->direct_8x8_inference_flag = 1;
+}
+
+static void
+pps_from_v4l2 (GstH264PPS * to, struct v4l2_ctrl_h264_pps *from)
+{
+  to->id = from->pic_parameter_set_id;
+  to->weighted_bipred_idc = from->weighted_bipred_idc;
+  to->chroma_qp_index_offset = from->chroma_qp_index_offset;
+  to->pic_init_qp_minus26 = from->pic_init_qp_minus26;
+  to->second_chroma_qp_index_offset = from->second_chroma_qp_index_offset;
+
+  if (from->flags & V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE)
+    to->entropy_coding_mode_flag = 1;
+  if (from->flags & V4L2_H264_PPS_FLAG_TRANSFORM_8X8_MODE)
+    to->transform_8x8_mode_flag = 1;
+  if (from->flags & V4L2_H264_PPS_FLAG_DEBLOCKING_FILTER_CONTROL_PRESENT)
+    to->deblocking_filter_control_present_flag = 1;
 }
 
 static gboolean
@@ -699,6 +759,12 @@ gst_v4l2_codec_h264_enc_decide_profile_and_level (GstV4l2CodecH264Enc * self,
 }
 
 static gboolean
+gst_v4l2_codec_h264_enc_v4l2_set_sps_pps (GstV4l2CodecH264Enc * self);
+static gboolean
+gst_v4l2_codec_h264_enc_v4l2_get_sps_pps (GstV4l2CodecH264Enc * self,
+    GstH264SPS * h264_sps, GstH264PPS * h264_pps);
+
+static gboolean
 gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
     GstVideoCodecState * state)
 {
@@ -712,14 +778,6 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
 
   gst_v4l2_codec_h264_enc_reset_allocation (self);
 
-  if (!gst_v4l2_encoder_set_src_fmt (self->encoder, &state->info,
-          V4L2_PIX_FMT_H264_SLICE)) {
-    GST_ELEMENT_ERROR (self, CORE, NEGOTIATION, ("Unsupported pixel format"),
-        ("No support for %ux%u format H264", state->info.width,
-            state->info.height));
-    return FALSE;
-  }
-
   if (!gst_v4l2_encoder_select_sink_format (self->encoder, &state->info,
           &self->vinfo)) {
     GST_ELEMENT_ERROR (self, CORE, NEGOTIATION,
@@ -727,6 +785,14 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
         ("gst_v4l2_encoder_select_sink_format() failed: %s",
             g_strerror (errno)));
     gst_v4l2_encoder_close (self->encoder);
+    return FALSE;
+  }
+
+  if (!gst_v4l2_encoder_set_src_fmt (self->encoder, &self->vinfo,
+          V4L2_PIX_FMT_H264_SLICE)) {
+    GST_ELEMENT_ERROR (self, CORE, NEGOTIATION, ("Unsupported pixel format"),
+        ("No support for %ux%u format H264", state->info.width,
+            state->info.height));
     return FALSE;
   }
 
@@ -779,6 +845,10 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
 
     gst_v4l2_codec_h264_enc_init_sps (self, state);
     gst_v4l2_codec_h264_enc_init_pps (self, state);
+
+    gst_v4l2_codec_h264_enc_v4l2_get_sps_pps (self, &self->sps, &self->pps);
+
+    gst_v4l2_codec_h264_enc_v4l2_set_sps_pps (self);
 
     return TRUE;
   }
@@ -944,6 +1014,68 @@ gst_v4l2_codec_h264_enc_ensure_output_bitstream (GstV4l2CodecH264Enc * self,
 }
 
 static void
+gst_v4l2_codec_h264_enc_fill_sps (GstH264Encoder * encoder,
+    struct v4l2_ctrl_h264_sps *sps)
+{
+  GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
+  GstH264SPS *from = &self->sps;
+
+  memset (sps, 0, sizeof (*sps));
+
+  GST_DEBUG_OBJECT (self, "sps->profile_idc = %d", sps->profile_idc);
+
+  sps->profile_idc = from->profile_idc;
+  sps->level_idc = from->level_idc;
+  sps->seq_parameter_set_id = from->id;
+  sps->chroma_format_idc = from->chroma_format_idc;
+
+  sps->pic_width_in_mbs_minus1 = from->pic_width_in_mbs_minus1;
+  sps->pic_height_in_map_units_minus1 = from->pic_height_in_map_units_minus1;
+
+  sps->max_num_ref_frames = from->num_ref_frames;
+  sps->num_ref_frames_in_pic_order_cnt_cycle = from->num_ref_frames;
+
+  sps->pic_order_cnt_type = from->pic_order_cnt_type;
+
+  sps->log2_max_frame_num_minus4 = from->log2_max_frame_num_minus4;
+  sps->log2_max_pic_order_cnt_lsb_minus4 =
+      from->log2_max_pic_order_cnt_lsb_minus4;
+
+  if (from->gaps_in_frame_num_value_allowed_flag)
+    sps->flags |= V4L2_H264_SPS_FLAG_GAPS_IN_FRAME_NUM_VALUE_ALLOWED;
+  if (from->direct_8x8_inference_flag)
+    sps->flags |= V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE;
+  if (from->frame_mbs_only_flag)
+    sps->flags |= V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY;
+}
+
+static void
+gst_v4l2_codec_h264_enc_fill_pps (GstH264Encoder * encoder,
+    struct v4l2_ctrl_h264_pps *pps)
+{
+  GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
+  GstH264PPS *from = &self->pps;
+
+  memset (pps, 0, sizeof (*pps));
+
+  pps->pic_parameter_set_id = from->id;
+  pps->seq_parameter_set_id = from->sequence->id;
+
+  if (from->entropy_coding_mode_flag)
+    pps->flags |= V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE;
+  if (from->transform_8x8_mode_flag)
+    pps->flags |= V4L2_H264_PPS_FLAG_TRANSFORM_8X8_MODE;
+  if (from->deblocking_filter_control_present_flag)
+    pps->flags |= V4L2_H264_PPS_FLAG_DEBLOCKING_FILTER_CONTROL_PRESENT;
+
+  pps->weighted_bipred_idc = from->weighted_bipred_idc;
+
+  pps->chroma_qp_index_offset = from->chroma_qp_index_offset;
+  pps->pic_init_qp_minus26 = from->pic_init_qp_minus26;
+  pps->second_chroma_qp_index_offset = pps->chroma_qp_index_offset;
+}
+
+static void
 gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
     GstH264Frame * h264_frame)
 {
@@ -996,6 +1128,73 @@ gst_v4l2_codec_h264_enc_fill_encode_rc (GstH264Encoder * encoder,
   self->encode_rc.qp = h264_frame->qp;
   self->encode_rc.qp_min = self->qp_min;
   self->encode_rc.qp_max = self->qp_max;
+}
+
+static gboolean
+gst_v4l2_codec_h264_enc_v4l2_get_sps_pps (GstV4l2CodecH264Enc * self,
+    GstH264SPS * h264_sps, GstH264PPS * h264_pps)
+{
+  struct v4l2_ctrl_h264_sps sps;
+  struct v4l2_ctrl_h264_pps pps;
+
+  /* *INDENT-OFF* */
+  struct v4l2_ext_control control[] = {
+    {
+      .id = V4L2_CID_STATELESS_H264_SPS,
+      .ptr = &sps,
+      .size = sizeof (sps),
+    }, {
+      .id = V4L2_CID_STATELESS_H264_PPS,
+      .ptr = &pps,
+      .size = sizeof (pps),
+    },
+  };
+  /* *INDENT-ON* */
+
+  if (!gst_v4l2_encoder_get_controls (self->encoder, NULL, control,
+          G_N_ELEMENTS (control))) {
+    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
+        ("Driver did not report the control parameters."), (NULL));
+    return FALSE;
+  }
+
+  sps_from_v4l2 (h264_sps, &sps);
+  pps_from_v4l2 (h264_pps, &pps);
+
+  return TRUE;
+}
+
+static gboolean
+gst_v4l2_codec_h264_enc_v4l2_set_sps_pps (GstV4l2CodecH264Enc * self)
+{
+  struct v4l2_ctrl_h264_sps sps;
+  struct v4l2_ctrl_h264_pps pps;
+
+  /* *INDENT-OFF* */
+  struct v4l2_ext_control control[] = {
+    {
+      .id = V4L2_CID_STATELESS_H264_SPS,
+      .ptr = &sps,
+      .size = sizeof (sps),
+    }, {
+      .id = V4L2_CID_STATELESS_H264_PPS,
+      .ptr = &pps,
+      .size = sizeof (pps),
+    },
+  };
+  /* *INDENT-ON* */
+
+  gst_v4l2_codec_h264_enc_fill_sps (GST_H264_ENCODER (self), &sps);
+  gst_v4l2_codec_h264_enc_fill_pps (GST_H264_ENCODER (self), &pps);
+
+  if (!gst_v4l2_encoder_set_controls (self->encoder, NULL, control,
+          G_N_ELEMENTS (control))) {
+    GST_ELEMENT_ERROR (self, RESOURCE, WRITE,
+        ("Driver did not accept the control parameters."), (NULL));
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static GstFlowReturn
