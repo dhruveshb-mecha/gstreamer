@@ -962,14 +962,8 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
       break;
   }
 
-  if (self->cabac) {
-    self->encode_params.flags |= V4L2_H264_ENCODE_FLAG_ENTROPY_CABAC;
-  } else {
-    self->encode_params.flags &= ~V4L2_H264_ENCODE_FLAG_ENTROPY_CABAC;
-  }
-
   self->encode_params.pic_parameter_set_id = 0;
-  self->encode_params.cabac_init_idc = self->cabac_init_idc;
+  self->encode_params.cabac_init_idc = 0;
 
   self->encode_params.pic_init_qp_minus26 = self->pps.pic_init_qp_minus26;
 
