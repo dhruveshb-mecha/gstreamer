@@ -1123,11 +1123,19 @@ gst_v4l2_codec_h264_enc_fill_encode_rc (GstH264Encoder * encoder,
     GstH264Frame * h264_frame)
 {
   GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
+  guint64 bitrate;
 
   /* Rate Control */
   self->encode_rc.qp = h264_frame->qp;
   self->encode_rc.qp_min = self->qp_min;
   self->encode_rc.qp_max = self->qp_max;
+
+  /*
+   * The target_bits is a rkvenc speciality since it allows to specify the
+   * target bitrate in the registers. I'm not sure how to address this, yet.
+   */
+  g_object_get (self, "bitrate", &bitrate, NULL);
+  self->encode_rc.target_bits = bitrate;
 }
 
 static gboolean
