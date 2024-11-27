@@ -684,7 +684,7 @@ gst_v4l2_encoder_queue_src_buffer (GstV4l2Encoder * self,
     .index = gst_v4l2_codec_buffer_get_index (buffer),
   };
 
-  GST_TRACE_OBJECT (self, "Queueing picture buffer %i", buf.index);
+  GST_TRACE_OBJECT (self, "Queueing bitstream buffer %i", buf.index);
 
   if (self->mplane) {
     buf.length = 1;
@@ -796,7 +796,7 @@ gst_v4l2_encoder_queue_sink_buffer (GstV4l2Encoder * self,
     .m.planes = planes,
   };
 
-  GST_TRACE_OBJECT (self, "Queuing bitstream buffer %i", buf.index);
+  GST_TRACE_OBJECT (self, "Queuing picture buffer %i", buf.index);
 
   if (!gst_v4l2_encoder_import_buffer (self, buffer, &buf))
     return FALSE;
