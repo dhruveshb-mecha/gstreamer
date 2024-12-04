@@ -1135,6 +1135,9 @@ gst_v4l2_codec_h264_enc_fill_encode_rc (GstH264Encoder * encoder,
   self->encode_rc.qp_min = self->qp_min;
   self->encode_rc.qp_max = self->qp_max;
 
+  GST_TRACE_OBJECT (self, "using QP %d (min %d, max %d)",
+      self->encode_rc.qp, self->encode_rc.qp_min, self->encode_rc.qp_max);
+
   /*
    * The target_bits is a rkvenc speciality since it allows to specify the
    * target bitrate in the registers. I'm not sure how to address this, yet.
@@ -1250,15 +1253,11 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
     /* *INDENT-ON* */
   };
 
-  GST_DEBUG_OBJECT (self, "encode h264 frame with qp = %d", h264_frame->qp);
-
   if (!gst_v4l2_codec_h264_enc_ensure_output_bitstream (self, frame)) {
     GST_ELEMENT_ERROR (self, RESOURCE, NO_SPACE_LEFT,
         ("Failed to allocate output buffer."), (NULL));
     goto done;
   }
-
-  GST_DEBUG_OBJECT (self, "encode h264 frame with qp = %d", h264_frame->qp);
 
   request = gst_v4l2_encoder_alloc_request (self->encoder,
       frame->system_frame_number, frame->input_buffer, frame->output_buffer);
