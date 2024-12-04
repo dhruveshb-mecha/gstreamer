@@ -144,7 +144,7 @@ buffer_state_find_buffer (GstV4l2Encoder * self, gint dmabuf_fd)
     if (self->buffer_state[i].queued)
       continue;
 
-    if (outstanding_index == -1)
+    if (outstanding_index == -1 && self->buffer_state[i].dmabuf_fd == -1)
       outstanding_index = i;
 
     if (self->buffer_state[i].dmabuf_fd == dmabuf_fd)
