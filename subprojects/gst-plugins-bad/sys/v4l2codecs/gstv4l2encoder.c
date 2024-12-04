@@ -761,9 +761,9 @@ gst_v4l2_encoder_import_buffer (GstV4l2Encoder * self, GstBuffer * buffer,
     /* *INDENT-OFF* */
     planes[i] = (struct v4l2_plane) {
       .bytesused = offset + size,
-        .length = offset + maxsize,
-        .data_offset = offset + mem_skip,
-        .m.fd = gst_dmabuf_memory_get_fd (mem),
+      .length = offset + maxsize,
+      .data_offset = offset + mem_skip,
+      .m.fd = gst_dmabuf_memory_get_fd (mem),
     };
     /* *INDENT-ON* */
   }
