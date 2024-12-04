@@ -1759,6 +1759,8 @@ struct v4l2_ctrl_h264_encode_rc {
 	__u32 cp_target[10];
 	__s32 cp_target_error[6];
 	__s32 cp_qp_delta[7];
+
+	__u32 target_bits;
 };
 
 #define V4L2_CID_STATELESS_H264_ENCODE_FEEDBACK	(V4L2_CID_CODEC_STATELESS_BASE + 10)
