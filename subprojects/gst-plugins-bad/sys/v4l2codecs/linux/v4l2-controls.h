@@ -1761,6 +1761,15 @@ struct v4l2_ctrl_h264_encode_rc {
 	__s32 cp_qp_delta[7];
 };
 
+#define V4L2_CID_STATELESS_H264_ENCODE_FEEDBACK	(V4L2_CID_CODEC_STATELESS_BASE + 10)
+
+struct v4l2_ctrl_h264_encode_feedback {
+	__u32 qp_sum;
+	__u32 cp[10];
+	__u32 mad_count;
+	__u32 rlc_count;
+};
+
 /* Stateless FWHT control, used by the vicodec driver */
 
 /* Current FWHT version */
