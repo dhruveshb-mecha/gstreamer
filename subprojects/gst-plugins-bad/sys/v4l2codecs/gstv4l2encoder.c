@@ -1368,3 +1368,17 @@ gst_v4l2_codec_vp8_enc_get_qp_range (GstV4l2Encoder * self,
 
   return TRUE;
 }
+
+gboolean
+gst_v4l2_codec_h264_enc_get_qp_range (GstV4l2Encoder * self,
+    guint * qp_min, guint * qp_max)
+{
+  GST_FIXME_OBJECT (self, "TODO Implement requesting QP limits from encoder");
+
+  *qp_max = 51;
+  *qp_min = 18;
+
+  GST_DEBUG_OBJECT (self, "encoder qp min %u qp max %u", *qp_min, *qp_max);
+
+  return TRUE;
+}

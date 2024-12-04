@@ -80,7 +80,9 @@ struct _GstV4l2CodecH264Enc
   gint height;
   gint width_in_macroblocks;
   gint height_in_macroblocks;
-  gint qp_init, qp_max, qp_min;
+  gint qp_init;
+  guint qp_max;
+  guint qp_min;
   gboolean cabac;
   guint cabac_init_idc;
 
@@ -842,6 +844,9 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
     GValue qp_init = G_VALUE_INIT;
     g_object_get_property (G_OBJECT (self), "quantizer", &qp_init);
     self->qp_init = g_value_get_int (&qp_init);
+
+    gst_v4l2_codec_h264_enc_get_qp_range (self->encoder, &self->qp_min,
+        &self->qp_max);
 
     gst_v4l2_codec_h264_enc_init_sps (self, state);
     gst_v4l2_codec_h264_enc_init_pps (self, state);
