@@ -452,7 +452,7 @@ gst_v4l2_codec_h264_enc_init_sps_pps (GstV4l2CodecH264Enc * self,
   self->sps.pic_width_in_mbs_minus1 = self->width_in_macroblocks - 1;
   self->sps.pic_height_in_map_units_minus1 = self->height_in_macroblocks - 1;
 
-  self->sps.num_ref_frames = 1; // FIXME: rename according to spec, max_num_ref_frames
+  self->sps.num_ref_frames = 1;
   self->sps.num_ref_frames_in_pic_order_cnt_cycle = 2;
 
   // XXX: fixed by hardware
