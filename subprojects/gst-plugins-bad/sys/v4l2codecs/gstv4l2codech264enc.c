@@ -893,7 +893,15 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
     gst_v4l2_codec_h264_enc_init_sps (self, state);
     gst_v4l2_codec_h264_enc_init_pps (self, state);
 
-    gst_v4l2_codec_h264_enc_v4l2_get_sps_pps (self, &self->sps, &self->pps);
+    /*
+     * Reading the SPS and PPS from the driver overrides the settings configured
+     * by GStreamer. We need a mechanism to merge/update the SPS and PPS
+     * determined by GStreamer or already prepare the defaults for the element
+     * for the negotiation based on the drivers capabilities. Maybe setting the
+     * SPS and PPS needs to be part of the negotiation.
+     */
+    if (0)
+      gst_v4l2_codec_h264_enc_v4l2_get_sps_pps (self, &self->sps, &self->pps);
 
     gst_v4l2_codec_h264_enc_v4l2_set_sps_pps (self);
 
