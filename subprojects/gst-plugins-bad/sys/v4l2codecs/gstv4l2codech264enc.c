@@ -805,6 +805,13 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
   gst_v4l2_codec_h264_enc_buffers_allocation (encoder);
   self->width_in_macroblocks = (self->width + 15) / 16;
   self->height_in_macroblocks = (self->height + 15) / 16;
+
+  /*
+   * FIXME first_frame is used to control if the SPS and PPS need to be sent.
+   * However, the SPS and PPS need to be send on every IDR and sending them only
+   * for the first frame is wrong. Thus the variable name needs to be changed
+   * and it must be set for every IDR.
+   */
   self->first_frame = TRUE;
 
   if (self->output_state)
