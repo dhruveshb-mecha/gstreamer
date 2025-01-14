@@ -101,6 +101,8 @@ struct _GstV4l2CodecH264Enc
   struct v4l2_ctrl_h264_encode_rc encode_rc;
   GstH264SPS sps;
   GstH264PPS pps;
+
+  unsigned int idr_pic_id;
 };
 
 G_DEFINE_ABSTRACT_TYPE (GstV4l2CodecH264Enc, gst_v4l2_codec_h264_enc,
@@ -1103,7 +1105,7 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
     case GstH264Keyframe:
       self->encode_params.slice_type = V4L2_H264_SLICE_TYPE_I;
       self->encode_params.nalu_type = V4L2_H264_NAL_CODED_SLICE_IDR_PIC;
-      self->encode_params.idr_pic_id++;
+      self->encode_params.idr_pic_id = self->idr_pic_id;
       self->encode_params.frame_num = 0;
       self->encode_params.nalu_type = 5;
       self->encode_params.nal_reference_idc = 1;
@@ -1324,6 +1326,12 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
 
   /* save last reference frame */
   self->reference_timestamp = (guint64) frame->system_frame_number * 1000;
+
+  /*
+   * TODO All frames in an IDR must have the same idr_pic_id. Fix how the
+   * idr_pic_id is managed and updated.
+   */
+  self->idr_pic_id++;
 
   return gst_video_encoder_finish_frame (venc, frame);
 
