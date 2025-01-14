@@ -429,103 +429,104 @@ static void
 gst_v4l2_codec_h264_enc_init_sps_pps (GstV4l2CodecH264Enc * self,
     GstVideoCodecState * state)
 {
-  memset (&self->sps, 0, sizeof (self->sps));
+  GstH264SPS *sps = &self->sps;
+
+  memset (sps, 0, sizeof (*sps));
   memset (&self->sps, 0, sizeof (self->pps));
 
   /* SPS */
   if (g_str_equal (self->profile_name, "baseline")) {
-    self->sps.profile_idc = GST_H264_PROFILE_BASELINE;
-    self->sps.constraint_set0_flag = 1;
-    self->sps.constraint_set1_flag = 0;
+    sps->profile_idc = GST_H264_PROFILE_BASELINE;
+    sps->constraint_set0_flag = 1;
+    sps->constraint_set1_flag = 0;
   } else if (g_str_equal (self->profile_name, "constrained-baseline")) {
-    self->sps.profile_idc = GST_H264_PROFILE_BASELINE;
-    self->sps.constraint_set0_flag = 1;
-    self->sps.constraint_set1_flag = 1;
+    sps->profile_idc = GST_H264_PROFILE_BASELINE;
+    sps->constraint_set0_flag = 1;
+    sps->constraint_set1_flag = 1;
   } else if (g_str_equal (self->profile_name, "main")) {
-    self->sps.profile_idc = GST_H264_PROFILE_MAIN;
+    sps->profile_idc = GST_H264_PROFILE_MAIN;
   } else if (g_str_equal (self->profile_name, "high")) {
-    self->sps.profile_idc = GST_H264_PROFILE_HIGH;
+    sps->profile_idc = GST_H264_PROFILE_HIGH;
   }
 
-  self->sps.chroma_format_idc = 1;      /* YUV 4:2:0 */
+  sps->chroma_format_idc = 1;   /* YUV 4:2:0 */
 
-  self->sps.pic_width_in_mbs_minus1 = self->width_in_macroblocks - 1;
-  self->sps.pic_height_in_map_units_minus1 = self->height_in_macroblocks - 1;
+  sps->pic_width_in_mbs_minus1 = self->width_in_macroblocks - 1;
+  sps->pic_height_in_map_units_minus1 = self->height_in_macroblocks - 1;
 
-  self->sps.num_ref_frames = 1;
-  self->sps.num_ref_frames_in_pic_order_cnt_cycle = 2;
+  sps->num_ref_frames = 1;
+  sps->num_ref_frames_in_pic_order_cnt_cycle = 2;
 
   // XXX: fixed by hardware
-  self->sps.pic_order_cnt_type = 2;
+  sps->pic_order_cnt_type = 2;
 
   // XXX: fixed by hardware FOSHO
-  self->sps.log2_max_frame_num_minus4 = 12;
-  self->sps.log2_max_pic_order_cnt_lsb_minus4 = 0;
+  sps->log2_max_frame_num_minus4 = 12;
+  sps->log2_max_pic_order_cnt_lsb_minus4 = 0;
 
   // XXX: fixed by hardware (at least constant in MPP)
-  self->sps.direct_8x8_inference_flag = 1;
-  self->sps.frame_mbs_only_flag = 1;
+  sps->direct_8x8_inference_flag = 1;
+  sps->frame_mbs_only_flag = 1;
 
   /* Add level specific constraint */
-  self->sps.level_idc = self->level_idc;
-  if (self->sps.level_idc == GST_H264_LEVEL_L1B)
-    self->sps.constraint_set3_flag = 1;
+  sps->level_idc = self->level_idc;
+  if (sps->level_idc == GST_H264_LEVEL_L1B)
+    sps->constraint_set3_flag = 1;
 
   /* Crop unaligned videos */
   if (self->width & 15 || self->height & 15) {
     static const guint chroma_subsampling_width[] = { 1, 2, 2, 1 };
     static const guint chroma_subsampling_height[] = { 1, 2, 1, 1 };
-    const guint crop_unit_x =
-        chroma_subsampling_width[self->sps.chroma_format_idc];
+    const guint crop_unit_x = chroma_subsampling_width[sps->chroma_format_idc];
     const guint crop_unit_y =
-        chroma_subsampling_height[self->sps.chroma_format_idc] * (2 -
-        self->sps.frame_mbs_only_flag);
+        chroma_subsampling_height[sps->chroma_format_idc] * (2 -
+        sps->frame_mbs_only_flag);
 
-    self->sps.frame_cropping_flag = 1;
-    self->sps.frame_crop_left_offset = 0;
-    self->sps.frame_crop_right_offset = (16 * self->width_in_macroblocks -
+    sps->frame_cropping_flag = 1;
+    sps->frame_crop_left_offset = 0;
+    sps->frame_crop_right_offset = (16 * self->width_in_macroblocks -
         self->width) / crop_unit_x;
-    self->sps.frame_crop_top_offset = 0;
-    self->sps.frame_crop_bottom_offset = (16 * self->height_in_macroblocks -
+    sps->frame_crop_top_offset = 0;
+    sps->frame_crop_bottom_offset = (16 * self->height_in_macroblocks -
         self->height) / crop_unit_y;
   }
   // set colorimetry
-  self->sps.vui_parameters_present_flag = 1;
+  sps->vui_parameters_present_flag = 1;
   if (state->info.colorimetry.range != GST_VIDEO_COLOR_RANGE_UNKNOWN &&
       state->info.colorimetry.matrix != GST_VIDEO_COLOR_MATRIX_UNKNOWN &&
       state->info.colorimetry.transfer != GST_VIDEO_TRANSFER_UNKNOWN &&
       state->info.colorimetry.primaries != GST_VIDEO_COLOR_PRIMARIES_UNKNOWN) {
 
-    self->sps.vui_parameters.video_signal_type_present_flag = 1;
-    self->sps.vui_parameters.video_format = 5;
-    self->sps.vui_parameters.colour_description_present_flag = 1;
-    self->sps.vui_parameters.colour_primaries =
+    sps->vui_parameters.video_signal_type_present_flag = 1;
+    sps->vui_parameters.video_format = 5;
+    sps->vui_parameters.colour_description_present_flag = 1;
+    sps->vui_parameters.colour_primaries =
         gst_video_color_primaries_to_iso (state->info.colorimetry.primaries);
-    self->sps.vui_parameters.transfer_characteristics =
+    sps->vui_parameters.transfer_characteristics =
         gst_video_transfer_function_to_iso (state->info.colorimetry.transfer);
-    self->sps.vui_parameters.matrix_coefficients =
+    sps->vui_parameters.matrix_coefficients =
         gst_video_color_matrix_to_iso (state->info.colorimetry.matrix);
     if (state->info.colorimetry.range == GST_VIDEO_COLOR_RANGE_0_255) {
-      self->sps.vui_parameters.video_full_range_flag = 1;
+      sps->vui_parameters.video_full_range_flag = 1;
     }
   }
   // set aspect ratio
-  self->sps.vui_parameters.aspect_ratio_info_present_flag = 1;
-  self->sps.vui_parameters.aspect_ratio_idc =
+  sps->vui_parameters.aspect_ratio_info_present_flag = 1;
+  sps->vui_parameters.aspect_ratio_idc =
       get_sps_aspect_ratio_idc (state->info.par_n, state->info.par_d);
-  if (self->sps.vui_parameters.aspect_ratio_idc == 255) {
-    self->sps.vui_parameters.sar_width = state->info.par_n;
-    self->sps.vui_parameters.sar_height = state->info.par_d;
+  if (sps->vui_parameters.aspect_ratio_idc == 255) {
+    sps->vui_parameters.sar_width = state->info.par_n;
+    sps->vui_parameters.sar_height = state->info.par_d;
   }
   // set Frame rate
-  self->sps.vui_parameters.timing_info_present_flag = 1;
-  self->sps.vui_parameters.fixed_frame_rate_flag = 1;   // Only supports fixed frame rate for now
-  self->sps.vui_parameters.num_units_in_tick = state->info.fps_d;
-  self->sps.vui_parameters.time_scale = state->info.fps_n * 2;
+  sps->vui_parameters.timing_info_present_flag = 1;
+  sps->vui_parameters.fixed_frame_rate_flag = 1;        // Only supports fixed frame rate for now
+  sps->vui_parameters.num_units_in_tick = state->info.fps_d;
+  sps->vui_parameters.time_scale = state->info.fps_n * 2;
 
   /* PPS */
   self->pps.id = 0;
-  self->pps.sequence = &self->sps;
+  self->pps.sequence = sps;
 
   /* XXX: fixed by hardware */
   self->pps.weighted_bipred_idc = 0;
