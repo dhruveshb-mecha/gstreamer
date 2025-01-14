@@ -426,16 +426,15 @@ get_sps_aspect_ratio_idc (guint par_n, guint par_d)
 }
 
 static void
-gst_v4l2_codec_h264_enc_init_sps_pps (GstV4l2CodecH264Enc * self,
+gst_v4l2_codec_h264_enc_init_sps (GstV4l2CodecH264Enc * self,
     GstVideoCodecState * state)
 {
   GstH264SPS *sps = &self->sps;
-  GstH264PPS *pps = &self->pps;
 
   memset (sps, 0, sizeof (*sps));
-  memset (pps, 0, sizeof (*pps));
 
-  /* SPS */
+  GST_DEBUG_OBJECT (self, "Initialize encoder configured SPS");
+
   if (g_str_equal (self->profile_name, "baseline")) {
     sps->profile_idc = GST_H264_PROFILE_BASELINE;
     sps->constraint_set0_flag = 1;
@@ -524,8 +523,20 @@ gst_v4l2_codec_h264_enc_init_sps_pps (GstV4l2CodecH264Enc * self,
   sps->vui_parameters.fixed_frame_rate_flag = 1;        // Only supports fixed frame rate for now
   sps->vui_parameters.num_units_in_tick = state->info.fps_d;
   sps->vui_parameters.time_scale = state->info.fps_n * 2;
+}
 
-  /* PPS */
+static void
+gst_v4l2_codec_h264_enc_init_pps (GstV4l2CodecH264Enc * self,
+    GstVideoCodecState * state)
+{
+  GstH264PPS *pps = &self->pps;
+  /* FIXME Don't rely on SPS to be set but pass it as argument */
+  GstH264SPS *sps = &self->sps;
+
+  GST_DEBUG_OBJECT (self, "Initialize encoder configured PPS");
+
+  memset (pps, 0, sizeof (*pps));
+
   pps->id = 0;
   pps->sequence = sps;
 
@@ -766,7 +777,8 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
     g_object_get_property (G_OBJECT (self), "quantizer", &qp_init);
     self->qp_init = g_value_get_int (&qp_init);
 
-    gst_v4l2_codec_h264_enc_init_sps_pps (self, state);
+    gst_v4l2_codec_h264_enc_init_sps (self, state);
+    gst_v4l2_codec_h264_enc_init_pps (self, state);
 
     return TRUE;
   }
