@@ -527,8 +527,6 @@ gst_v4l2_codec_h264_enc_init_sps_pps (GstV4l2CodecH264Enc * self,
   self->pps.id = 0;
   self->pps.sequence = &self->sps;
 
-  self->pps.deblocking_filter_control_present_flag = 1; // TODO: Set it properly
-
   /* XXX: fixed by hardware */
   self->pps.weighted_bipred_idc = 0;
 
