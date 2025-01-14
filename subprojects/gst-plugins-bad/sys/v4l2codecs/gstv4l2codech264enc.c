@@ -1099,6 +1099,11 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
 
   switch (h264_frame->type) {
     case GstH264Keyframe:
+      /*
+       * TODO Always using IDR and SLICE_TYPE_I is not correct. A IDR requires
+       * that a slice is TYPE_I (or some other options), but a I_SLICE doesn't
+       * require an IDR.
+       */
       encode_params->slice_type = V4L2_H264_SLICE_TYPE_I;
       encode_params->nalu_type = V4L2_H264_NAL_CODED_SLICE_IDR_PIC;
       encode_params->idr_pic_id = self->idr_pic_id;
