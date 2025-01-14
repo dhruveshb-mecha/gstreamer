@@ -430,9 +430,10 @@ gst_v4l2_codec_h264_enc_init_sps_pps (GstV4l2CodecH264Enc * self,
     GstVideoCodecState * state)
 {
   GstH264SPS *sps = &self->sps;
+  GstH264PPS *pps = &self->pps;
 
   memset (sps, 0, sizeof (*sps));
-  memset (&self->sps, 0, sizeof (self->pps));
+  memset (pps, 0, sizeof (*pps));
 
   /* SPS */
   if (g_str_equal (self->profile_name, "baseline")) {
@@ -525,17 +526,17 @@ gst_v4l2_codec_h264_enc_init_sps_pps (GstV4l2CodecH264Enc * self,
   sps->vui_parameters.time_scale = state->info.fps_n * 2;
 
   /* PPS */
-  self->pps.id = 0;
-  self->pps.sequence = sps;
+  pps->id = 0;
+  pps->sequence = sps;
 
   /* XXX: fixed by hardware */
-  self->pps.weighted_bipred_idc = 0;
+  pps->weighted_bipred_idc = 0;
 
-  self->pps.chroma_qp_index_offset = 4;
-  self->pps.pic_init_qp_minus26 = self->qp_init - 26;
-  self->pps.second_chroma_qp_index_offset = self->pps.chroma_qp_index_offset;
-  self->pps.deblocking_filter_control_present_flag = 1;
-  self->pps.entropy_coding_mode_flag = self->cabac;
+  pps->chroma_qp_index_offset = 4;
+  pps->pic_init_qp_minus26 = self->qp_init - 26;
+  pps->second_chroma_qp_index_offset = pps->chroma_qp_index_offset;
+  pps->deblocking_filter_control_present_flag = 1;
+  pps->entropy_coding_mode_flag = self->cabac;
 }
 
 /* Begin of code taken from VA plugin */
