@@ -1125,7 +1125,10 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
   encode_params->pic_init_qp_minus26 = self->pps.pic_init_qp_minus26;
 
   encode_params->chroma_qp_index_offset = self->pps.chroma_qp_index_offset;
+
   encode_params->disable_deblocking_filter_idc = 0;
+  encode_params->slice_alpha_c0_offset_div2 = 0;
+  encode_params->slice_beta_offset_div2 = 0;
 }
 
 static void
