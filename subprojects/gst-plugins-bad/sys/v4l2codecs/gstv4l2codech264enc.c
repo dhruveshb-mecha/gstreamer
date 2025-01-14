@@ -287,15 +287,16 @@ static gboolean
 gst_v4l2_codec_h264_enc_buffers_allocation (GstVideoEncoder * encoder)
 {
   GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
-
-  GST_DEBUG_OBJECT (self, "buffers allocation");
+  int num_buffers = 4;
 
   g_clear_object (&self->sink_pool);
   g_clear_object (&self->src_pool);
   g_clear_object (&self->src_allocator);
 
+  GST_DEBUG_OBJECT (self, "allocate %d sink buffers", num_buffers);
+
   self->sink_allocator = gst_v4l2_codec_encoder_allocator_new (self->encoder,
-      GST_PAD_SINK, 4);
+      GST_PAD_SINK, num_buffers);
   if (!self->sink_allocator) {
     GST_ELEMENT_ERROR (self, RESOURCE, NO_SPACE_LEFT,
         ("Not enough memory to allocate sink buffers."), (NULL));
