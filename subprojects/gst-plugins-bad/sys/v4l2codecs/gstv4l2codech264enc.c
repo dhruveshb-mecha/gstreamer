@@ -97,7 +97,6 @@ struct _GstV4l2CodecH264Enc
   gboolean first_frame;
   guint64 reference_timestamp;
 
-  struct v4l2_ctrl_h264_encode_params encode_params;
   struct v4l2_ctrl_h264_encode_rc encode_rc;
   GstH264SPS sps;
   GstH264PPS pps;
@@ -1091,45 +1090,42 @@ gst_v4l2_codec_h264_enc_fill_pps (GstH264Encoder * encoder,
 
 static void
 gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
+    struct v4l2_ctrl_h264_encode_params *encode_params,
     GstH264Frame * h264_frame)
 {
   GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
 
-  /* FIXME
-   * Completely rewrite encode_parms each run, this is error prone otherwise,
-   * keep state outside of the structure
-   */
-  self->encode_params.flags = 0;
+  encode_params->flags = 0;
 
   switch (h264_frame->type) {
     case GstH264Keyframe:
-      self->encode_params.slice_type = V4L2_H264_SLICE_TYPE_I;
-      self->encode_params.nalu_type = V4L2_H264_NAL_CODED_SLICE_IDR_PIC;
-      self->encode_params.idr_pic_id = self->idr_pic_id;
-      self->encode_params.frame_num = 0;
-      self->encode_params.nalu_type = 5;
-      self->encode_params.nal_reference_idc = 1;
+      encode_params->slice_type = V4L2_H264_SLICE_TYPE_I;
+      encode_params->nalu_type = V4L2_H264_NAL_CODED_SLICE_IDR_PIC;
+      encode_params->idr_pic_id = self->idr_pic_id;
+      encode_params->frame_num = 0;
+      encode_params->nalu_type = 5;
+      encode_params->nal_reference_idc = 1;
       break;
     case GstH264Inter:
     default:
-      self->encode_params.slice_type = V4L2_H264_SLICE_TYPE_P;
-      self->encode_params.nalu_type = V4L2_H264_NAL_CODED_SLICE_NON_IDR_PIC;
-      self->encode_params.reference_ts = self->reference_timestamp;
-      self->encode_params.frame_num++;
-      self->encode_params.frame_num %=
+      encode_params->slice_type = V4L2_H264_SLICE_TYPE_P;
+      encode_params->nalu_type = V4L2_H264_NAL_CODED_SLICE_NON_IDR_PIC;
+      encode_params->reference_ts = self->reference_timestamp;
+      encode_params->frame_num++;
+      encode_params->frame_num %=
           (1 << (self->sps.log2_max_frame_num_minus4 + 4));
-      self->encode_params.nalu_type = 1;
-      self->encode_params.nal_reference_idc = 2;
+      encode_params->nalu_type = 1;
+      encode_params->nal_reference_idc = 2;
       break;
   }
 
-  self->encode_params.pic_parameter_set_id = 0;
-  self->encode_params.cabac_init_idc = 0;
+  encode_params->pic_parameter_set_id = 0;
+  encode_params->cabac_init_idc = 0;
 
-  self->encode_params.pic_init_qp_minus26 = self->pps.pic_init_qp_minus26;
+  encode_params->pic_init_qp_minus26 = self->pps.pic_init_qp_minus26;
 
-  self->encode_params.chroma_qp_index_offset = self->pps.chroma_qp_index_offset;
-  self->encode_params.disable_deblocking_filter_idc = 0;
+  encode_params->chroma_qp_index_offset = self->pps.chroma_qp_index_offset;
+  encode_params->disable_deblocking_filter_idc = 0;
 }
 
 static void
@@ -1236,6 +1232,7 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
   guint32 bytesused;
   guint data_size;
   guint32 flags;
+  struct v4l2_ctrl_h264_encode_params encode_params;
 
   if (self->first_frame) {
     codec_data = gst_buffer_new_and_alloc (38 + SPS_SIZE + PPS_SIZE);
@@ -1252,8 +1249,8 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
     /* *INDENT-OFF* */
     {
       .id = V4L2_CID_STATELESS_H264_ENCODE_PARAMS,
-      .ptr = &self->encode_params,
-      .size = sizeof (self->encode_params),
+      .ptr = &encode_params,
+      .size = sizeof (encode_params),
     }, {
       .id = V4L2_CID_STATELESS_H264_ENCODE_RC,
       .ptr = &self->encode_rc,
@@ -1277,7 +1274,8 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
     goto done;
   }
 
-  gst_v4l2_codec_h264_enc_fill_encode_params (encoder, h264_frame);
+  gst_v4l2_codec_h264_enc_fill_encode_params (encoder, &encode_params,
+      h264_frame);
 
   gst_v4l2_codec_h264_enc_fill_encode_rc (encoder, h264_frame);
 
