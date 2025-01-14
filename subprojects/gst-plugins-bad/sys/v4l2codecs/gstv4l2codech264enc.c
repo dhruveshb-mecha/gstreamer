@@ -97,7 +97,6 @@ struct _GstV4l2CodecH264Enc
   gboolean first_frame;
   guint64 reference_timestamp;
 
-  struct v4l2_ctrl_h264_encode_rc encode_rc;
   GstH264SPS sps;
   GstH264PPS pps;
 
@@ -1133,25 +1132,25 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
 
 static void
 gst_v4l2_codec_h264_enc_fill_encode_rc (GstH264Encoder * encoder,
-    GstH264Frame * h264_frame)
+    struct v4l2_ctrl_h264_encode_rc *encode_rc, GstH264Frame * h264_frame)
 {
   GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
   guint64 bitrate;
 
   /* Rate Control */
-  self->encode_rc.qp = h264_frame->qp;
-  self->encode_rc.qp_min = self->qp_min;
-  self->encode_rc.qp_max = self->qp_max;
+  encode_rc->qp = h264_frame->qp;
+  encode_rc->qp_min = self->qp_min;
+  encode_rc->qp_max = self->qp_max;
 
   GST_TRACE_OBJECT (self, "using QP %d (min %d, max %d)",
-      self->encode_rc.qp, self->encode_rc.qp_min, self->encode_rc.qp_max);
+      encode_rc->qp, encode_rc->qp_min, encode_rc->qp_max);
 
   /*
    * The target_bits is a rkvenc speciality since it allows to specify the
    * target bitrate in the registers. I'm not sure how to address this, yet.
    */
   g_object_get (self, "bitrate", &bitrate, NULL);
-  self->encode_rc.target_bits = bitrate;
+  encode_rc->target_bits = bitrate;
 }
 
 static gboolean
@@ -1236,6 +1235,7 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
   guint data_size;
   guint32 flags;
   struct v4l2_ctrl_h264_encode_params encode_params;
+  struct v4l2_ctrl_h264_encode_rc encode_rc;
 
   if (self->first_frame) {
     codec_data = gst_buffer_new_and_alloc (38 + SPS_SIZE + PPS_SIZE);
@@ -1256,8 +1256,8 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
       .size = sizeof (encode_params),
     }, {
       .id = V4L2_CID_STATELESS_H264_ENCODE_RC,
-      .ptr = &self->encode_rc,
-      .size = sizeof (self->encode_rc),
+      .ptr = &encode_rc,
+      .size = sizeof (encode_rc),
     },
     /* *INDENT-ON* */
   };
@@ -1280,7 +1280,7 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
   gst_v4l2_codec_h264_enc_fill_encode_params (encoder, &encode_params,
       h264_frame);
 
-  gst_v4l2_codec_h264_enc_fill_encode_rc (encoder, h264_frame);
+  gst_v4l2_codec_h264_enc_fill_encode_rc (encoder, &encode_rc, h264_frame);
 
   if (!gst_v4l2_encoder_set_controls (self->encoder, request, control,
           G_N_ELEMENTS (control))) {
