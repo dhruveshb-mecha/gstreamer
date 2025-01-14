@@ -520,16 +520,23 @@ gst_v4l2_codec_h264_enc_init_sps (GstV4l2CodecH264Enc * self,
   sps->num_ref_frames = 1;
   sps->num_ref_frames_in_pic_order_cnt_cycle = 2;
 
-  // XXX: fixed by hardware
+  /* TODO Document */
   sps->pic_order_cnt_type = 2;
 
-  // XXX: fixed by hardware FOSHO
+  /* TODO Document */
   sps->log2_max_frame_num_minus4 = 12;
+
+  /* TODO Document */
   sps->log2_max_pic_order_cnt_lsb_minus4 = 0;
 
-  // XXX: fixed by hardware (at least constant in MPP)
+  /* TODO Document */
   sps->direct_8x8_inference_flag = 1;
+
+  /* TODO Document */
   sps->frame_mbs_only_flag = 1;
+
+  /* TODO Document */
+  sps->gaps_in_frame_num_value_allowed_flag = 1;
 
   /* Add level specific constraint */
   sps->level_idc = self->level_idc;
@@ -603,13 +610,33 @@ gst_v4l2_codec_h264_enc_init_pps (GstV4l2CodecH264Enc * self,
   pps->id = 0;
   pps->sequence = sps;
 
-  /* XXX: fixed by hardware */
+  /* weighted_bipred_idc is only relevant for B-frames. 0 is default. */
   pps->weighted_bipred_idc = 0;
 
+  /* Offset for the QP used for the chroma plane compared to the slice QP. */
   pps->chroma_qp_index_offset = 4;
+
+  /* The initial value of the slice QP. */
   pps->pic_init_qp_minus26 = self->qp_init - 26;
+
+  /*
+   * second_chroma_qp_index_offset is inferred from chroma_qp_index_offset if it
+   * isn't there. Set it, but leave it at the same value as the inferred value.
+   */
   pps->second_chroma_qp_index_offset = pps->chroma_qp_index_offset;
+
+  /*
+   * deblocking_filter_control_present_flag should be set, if the slice header
+   * contains the characteristics of the deblocking filter, which needs to be
+   * supported by the driver.
+   *
+   * If the driver doesn't use disable_deblocking_filter_idc,
+   * slice_alpha_c0_offset_div2 and slice_beta_offset_div2 from
+   * v4l2_ctrl_h264_encode_params, you may have to disable the flag.
+   */
   pps->deblocking_filter_control_present_flag = 1;
+
+  /* The driver must support CABAC entropy encoding mode, if this is enabled. */
   pps->entropy_coding_mode_flag = self->cabac;
 }
 
