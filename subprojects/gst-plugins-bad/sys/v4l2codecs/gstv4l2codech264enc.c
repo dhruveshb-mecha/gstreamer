@@ -530,10 +530,6 @@ gst_v4l2_codec_h264_enc_init_sps_pps (GstV4l2CodecH264Enc * self,
   /* XXX: fixed by hardware */
   self->pps.weighted_bipred_idc = 0;
 
-  /* Rate Control */
-  GValue qp_init = G_VALUE_INIT;
-  g_object_get_property (G_OBJECT (self), "quantizer", &qp_init);
-  self->qp_init = g_value_get_int (&qp_init);
   self->pps.chroma_qp_index_offset = 4;
   self->pps.pic_init_qp_minus26 = self->qp_init - 26;
   self->pps.second_chroma_qp_index_offset = self->pps.chroma_qp_index_offset;
@@ -762,6 +758,11 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
 
     g_object_get (self, "cabac", &self->cabac, "cabac-init-idc",
         &self->cabac_init_idc, NULL);
+
+    /* Rate Control */
+    GValue qp_init = G_VALUE_INIT;
+    g_object_get_property (G_OBJECT (self), "quantizer", &qp_init);
+    self->qp_init = g_value_get_int (&qp_init);
 
     gst_v4l2_codec_h264_enc_init_sps_pps (self, state);
 
