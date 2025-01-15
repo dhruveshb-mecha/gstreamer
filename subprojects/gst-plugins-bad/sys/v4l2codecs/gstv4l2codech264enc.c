@@ -784,6 +784,9 @@ gst_v4l2_codec_h264_enc_decide_profile_and_level (GstV4l2CodecH264Enc * self,
     self->level_idc = _h264_level_limits[minimum_level_index].idc;
   }
 
+  GST_DEBUG_OBJECT (self, "Negotiated H.264 Profile %s Level %s",
+      self->profile_name, level_name);
+
   gst_caps_unref (allowed_caps);
   return TRUE;
 }
@@ -1061,8 +1064,6 @@ gst_v4l2_codec_h264_enc_fill_sps (GstH264Encoder * encoder,
   GstH264SPS *from = &self->sps;
 
   memset (sps, 0, sizeof (*sps));
-
-  GST_DEBUG_OBJECT (self, "sps->profile_idc = %d", sps->profile_idc);
 
   sps->profile_idc = from->profile_idc;
   sps->level_idc = from->level_idc;
