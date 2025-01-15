@@ -532,31 +532,17 @@ gst_v4l2_encoder_set_src_fmt (GstV4l2Encoder * self, GstVideoInfo * info,
     .type = self->src_buf_type,
   };
   gint ret;
-  gint width = info->width;
-  gint height = info->height;
 
-  ret = ioctl (self->video_fd, VIDIOC_G_FMT, &fmt);
+  GST_DEBUG_OBJECT (self, "Set source format %" GST_FOURCC_FORMAT,
+      GST_FOURCC_ARGS (pix_fmt));
+
+  fmt.fmt.pix_mp.pixelformat = pix_fmt;
+  fmt.fmt.pix_mp.plane_fmt[0].sizeimage = 4 * 1024 * 1024;
+
+  ret = ioctl (self->video_fd, VIDIOC_S_FMT, &fmt);
   if (ret < 0) {
-    GST_ERROR_OBJECT (self, "VIDIOC_G_FMT failed: %s", g_strerror (errno));
+    GST_ERROR_OBJECT (self, "VIDIOC_S_FMT failed: %s", g_strerror (errno));
     return FALSE;
-  }
-
-  if (pix_fmt != fmt.fmt.pix_mp.pixelformat
-      || fmt.fmt.pix_mp.width != width || fmt.fmt.pix_mp.height != height) {
-    GST_DEBUG_OBJECT (self,
-        "Trying to use peer format: %" GST_FOURCC_FORMAT " %ix%i",
-        GST_FOURCC_ARGS (pix_fmt), width, height);
-
-    fmt.fmt.pix_mp.pixelformat = pix_fmt;
-    fmt.fmt.pix_mp.width = width;
-    fmt.fmt.pix_mp.height = height;
-    fmt.fmt.pix_mp.plane_fmt[0].sizeimage = 4 * 1024 * 1024;
-
-    ret = ioctl (self->video_fd, VIDIOC_S_FMT, &fmt);
-    if (ret < 0) {
-      GST_ERROR_OBJECT (self, "VIDIOC_S_FMT failed: %s", g_strerror (errno));
-      return FALSE;
-    }
   }
 
   if (fmt.fmt.pix_mp.pixelformat != pix_fmt) {
