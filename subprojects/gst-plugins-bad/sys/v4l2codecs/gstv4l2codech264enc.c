@@ -804,12 +804,18 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
   GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
   GstCaps *caps;
 
-  GST_DEBUG_OBJECT (self, "Set format");
-
   gst_v4l2_encoder_streamoff (self->encoder, GST_PAD_SINK);
   gst_v4l2_encoder_streamoff (self->encoder, GST_PAD_SRC);
 
   gst_v4l2_codec_h264_enc_reset_allocation (self);
+
+  if (!gst_v4l2_encoder_set_src_fmt (self->encoder, &self->vinfo,
+          V4L2_PIX_FMT_H264_SLICE)) {
+    GST_ELEMENT_ERROR (self, CORE, NEGOTIATION, ("Unsupported pixel format"),
+        ("No support for %ux%u format H264", state->info.width,
+            state->info.height));
+    return FALSE;
+  }
 
   if (!gst_v4l2_encoder_select_sink_format (self->encoder, &state->info,
           &self->vinfo)) {
@@ -818,14 +824,6 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
         ("gst_v4l2_encoder_select_sink_format() failed: %s",
             g_strerror (errno)));
     gst_v4l2_encoder_close (self->encoder);
-    return FALSE;
-  }
-
-  if (!gst_v4l2_encoder_set_src_fmt (self->encoder, &self->vinfo,
-          V4L2_PIX_FMT_H264_SLICE)) {
-    GST_ELEMENT_ERROR (self, CORE, NEGOTIATION, ("Unsupported pixel format"),
-        ("No support for %ux%u format H264", state->info.width,
-            state->info.height));
     return FALSE;
   }
 
