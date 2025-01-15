@@ -480,9 +480,11 @@ gst_v4l2_encoder_select_sink_format (GstV4l2Encoder * self, GstVideoInfo * in,
     GST_DEBUG_OBJECT (self,
         "Trying to use peer format: %" GST_FOURCC_FORMAT " %ix%i",
         GST_FOURCC_ARGS (pix_fmt), width, height);
+
     fmt.fmt.pix_mp.pixelformat = pix_fmt;
     fmt.fmt.pix_mp.width = width;
     fmt.fmt.pix_mp.height = height;
+
     ret = ioctl (self->video_fd, VIDIOC_S_FMT, &fmt);
     if (ret < 0) {
       GST_ERROR_OBJECT (self, "VIDIOC_S_FMT failed: %s", g_strerror (errno));
@@ -533,7 +535,7 @@ gst_v4l2_encoder_set_src_fmt (GstV4l2Encoder * self, GstVideoInfo * info,
   };
   gint ret;
 
-  GST_DEBUG_OBJECT (self, "Set source format %" GST_FOURCC_FORMAT,
+  GST_DEBUG_OBJECT (self, "Setting source format %" GST_FOURCC_FORMAT,
       GST_FOURCC_ARGS (pix_fmt));
 
   fmt.fmt.pix_mp.pixelformat = pix_fmt;
@@ -546,7 +548,7 @@ gst_v4l2_encoder_set_src_fmt (GstV4l2Encoder * self, GstVideoInfo * info,
   }
 
   if (fmt.fmt.pix_mp.pixelformat != pix_fmt) {
-    GST_WARNING_OBJECT (self, "Failed to set sink format to %"
+    GST_WARNING_OBJECT (self, "Failed to set source format to %"
         GST_FOURCC_FORMAT, GST_FOURCC_ARGS (pix_fmt));
     errno = EINVAL;
     return FALSE;
@@ -566,7 +568,9 @@ gst_v4l2_encoder_request_buffers (GstV4l2Encoder * self,
     .type = direction_to_buffer_type (self, direction),
   };
 
-  GST_DEBUG_OBJECT (self, "Requesting %u buffers", num_buffers);
+  GST_DEBUG_OBJECT (self, "Requesting %u buffers of type %d on %s queue",
+      reqbufs.count, reqbufs.memory,
+      V4L2_TYPE_IS_CAPTURE (reqbufs.type) ? "CAPTURE" : "OUTPUT");
 
   ret = ioctl (self->video_fd, VIDIOC_REQBUFS, &reqbufs);
   if (ret < 0) {
