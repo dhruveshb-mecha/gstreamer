@@ -55,12 +55,15 @@ gboolean          gst_v4l2_encoder_enum_sink_fmt (GstV4l2Encoder * self,
 GstCaps *         gst_v4l2_encoder_list_sink_formats (GstV4l2Encoder * self);
 
 gboolean          gst_v4l2_encoder_select_sink_format (GstV4l2Encoder * self,
-						       GstVideoInfo * in, GstVideoInfo * out);
+                                                       GstCaps * caps,
+                                                       GstVideoInfoDmaDrm * vinfo_drm);
 
 gboolean          gst_v4l2_encoder_enum_src_formats (GstV4l2Encoder * self,
                                                      gint i, guint32 * out_fmt);
 
-gboolean          gst_v4l2_encoder_set_src_fmt (GstV4l2Encoder * self, GstVideoInfo * info, guint32 pix_fmt);
+gboolean          gst_v4l2_encoder_set_src_fmt (GstV4l2Encoder * self,
+                                                GstVideoInfoDmaDrm * info,
+                                                guint32 pix_fmt);
 
 gint              gst_v4l2_encoder_request_buffers (GstV4l2Encoder * self,
                                                     GstPadDirection direction,

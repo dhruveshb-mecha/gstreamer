@@ -25,6 +25,7 @@
 #include "gstv4l2codecpool.h"
 #include "gstv4l2encoder.h"
 #include "gstv4l2format.h"
+#include "linux/drm_fourcc.h"
 #include "linux/media.h"
 #include "linux/videodev2.h"
 
@@ -452,16 +453,21 @@ gst_v4l2_encoder_enum_sink_fmt (GstV4l2Encoder * self, gint i,
 }
 
 gboolean
-gst_v4l2_encoder_select_sink_format (GstV4l2Encoder * self, GstVideoInfo * in,
-    GstVideoInfo * out)
+gst_v4l2_encoder_select_sink_format (GstV4l2Encoder * self, GstCaps * caps,
+    GstVideoInfoDmaDrm * vinfo_drm)
 {
   gint ret;
   struct v4l2_format fmt = {
     .type = self->sink_buf_type,
   };
+  GstVideoFormat format;
   guint32 pix_fmt;
-  gint width = in->width;
-  gint height = in->height;
+  gint width;
+  gint height;
+  GstVideoInfoDmaDrm tmp_vinfo_drm;
+
+  if (gst_caps_is_empty (caps))
+    return FALSE;
 
   ret = ioctl (self->video_fd, VIDIOC_G_FMT, &fmt);
   if (ret < 0) {
@@ -469,18 +475,37 @@ gst_v4l2_encoder_select_sink_format (GstV4l2Encoder * self, GstVideoInfo * in,
     return FALSE;
   }
 
-  if (!gst_v4l2_format_from_video_format (in->finfo->format, &pix_fmt)) {
-    GST_ERROR_OBJECT (self, "Unsupported pixelformat %s",
-        gst_video_format_to_string (in->finfo->format));
+  GST_DEBUG_OBJECT (self, "Original caps: %" GST_PTR_FORMAT, caps);
+  caps = gst_caps_fixate (caps);
+  GST_DEBUG_OBJECT (self, "Fixated caps: %" GST_PTR_FORMAT, caps);
+
+  gst_video_info_dma_drm_init (&tmp_vinfo_drm);
+  if (!gst_video_info_dma_drm_from_caps (&tmp_vinfo_drm, caps) &&
+      !gst_video_info_from_caps (&tmp_vinfo_drm.vinfo, caps)) {
+    GST_WARNING_OBJECT (self, "Can't transform caps into video info!");
+    return FALSE;
+  }
+
+  format = tmp_vinfo_drm.vinfo.finfo->format;
+  width = tmp_vinfo_drm.vinfo.width;
+  height = tmp_vinfo_drm.vinfo.height;
+  if (!gst_v4l2_format_from_drm_format (tmp_vinfo_drm.drm_fourcc,
+          tmp_vinfo_drm.drm_modifier, &pix_fmt) &&
+      !gst_v4l2_format_from_video_format (format, &pix_fmt)) {
+    GST_ERROR_OBJECT (self,
+        "Unsupported format %s DRM %" GST_FOURCC_FORMAT ":0x%016"
+        G_GINT64_MODIFIER "x", gst_video_format_to_string (format),
+        GST_FOURCC_ARGS (tmp_vinfo_drm.drm_fourcc), tmp_vinfo_drm.drm_modifier);
     return FALSE;
   }
 
   if (pix_fmt != fmt.fmt.pix_mp.pixelformat
       || fmt.fmt.pix_mp.width != width || fmt.fmt.pix_mp.height != height) {
     GST_DEBUG_OBJECT (self,
-        "Trying to use peer format: %" GST_FOURCC_FORMAT " %ix%i",
-        GST_FOURCC_ARGS (pix_fmt), width, height);
-
+        "Trying to use peer format: %s V4L2 %" GST_FOURCC_FORMAT " DRM %"
+        GST_FOURCC_FORMAT ":0x%016" G_GINT64_MODIFIER "x",
+        gst_video_format_to_string (format), GST_FOURCC_ARGS (pix_fmt),
+        GST_FOURCC_ARGS (tmp_vinfo_drm.drm_fourcc), tmp_vinfo_drm.drm_modifier);
     fmt.fmt.pix_mp.pixelformat = pix_fmt;
     fmt.fmt.pix_mp.width = width;
     fmt.fmt.pix_mp.height = height;
@@ -492,14 +517,31 @@ gst_v4l2_encoder_select_sink_format (GstV4l2Encoder * self, GstVideoInfo * in,
     }
   }
 
-  if (!gst_v4l2_format_to_video_info (&fmt, out)) {
+  if (!gst_v4l2_format_to_dma_drm_info (&fmt, vinfo_drm)) {
     GST_ERROR_OBJECT (self, "Unsupported V4L2 pixelformat %" GST_FOURCC_FORMAT,
         GST_FOURCC_ARGS (fmt.fmt.pix_mp.pixelformat));
     return FALSE;
   }
 
-  GST_INFO_OBJECT (self, "Selected sink format %s %ix%i",
-      gst_video_format_to_string (out->finfo->format), out->width, out->height);
+  if (tmp_vinfo_drm.drm_fourcc == DRM_FORMAT_INVALID) {
+    if (vinfo_drm->vinfo.finfo->format == GST_VIDEO_FORMAT_DMA_DRM) {
+      GST_ERROR_OBJECT (self,
+          "V4L2 pixelformat %" GST_FOURCC_FORMAT
+          " only supported with DMA_DRM caps but non-DMA_DRM caps requested.",
+          GST_FOURCC_ARGS (fmt.fmt.pix_mp.pixelformat));
+      return FALSE;
+    }
+    /* Non-DMA_DRM caps, clean VideoInfo. */
+    vinfo_drm->drm_fourcc = DRM_FORMAT_INVALID;
+    vinfo_drm->drm_modifier = DRM_FORMAT_MOD_INVALID;
+  }
+
+  GST_INFO_OBJECT (self,
+      "Selected format %s DRM %" GST_FOURCC_FORMAT ":0x%016" G_GINT64_MODIFIER
+      "x %ix%i", gst_video_format_to_string (format),
+      GST_FOURCC_ARGS (vinfo_drm->drm_fourcc), vinfo_drm->drm_modifier,
+      vinfo_drm->vinfo.width, vinfo_drm->vinfo.height);
+
   self->sink_fmt = fmt;
 
   return TRUE;
@@ -527,7 +569,7 @@ gst_v4l2_encoder_enum_src_formats (GstV4l2Encoder * self, gint i,
 }
 
 gboolean
-gst_v4l2_encoder_set_src_fmt (GstV4l2Encoder * self, GstVideoInfo * info,
+gst_v4l2_encoder_set_src_fmt (GstV4l2Encoder * self, GstVideoInfoDmaDrm * info,
     guint32 pix_fmt)
 {
   struct v4l2_format fmt = (struct v4l2_format) {

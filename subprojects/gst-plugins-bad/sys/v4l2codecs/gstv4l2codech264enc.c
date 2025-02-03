@@ -75,7 +75,7 @@ struct _GstV4l2CodecH264Enc
   GstH264Encoder parent;
   GstV4l2Encoder *encoder;
   GstVideoCodecState *output_state;
-  GstVideoInfo vinfo;
+  GstVideoInfoDmaDrm vinfo_drm;
   gint width;
   gint height;
   gint width_in_macroblocks;
@@ -273,10 +273,10 @@ gst_v4l2_codec_h264_enc_propose_allocation (GstVideoEncoder * encoder,
   gst_query_parse_allocation (query, NULL, &need_pool);
 
   if (need_pool)
-    pool = gst_v4l2_codec_pool_new (self->sink_allocator, &self->vinfo);
+    pool = gst_v4l2_codec_pool_new (self->sink_allocator, &self->vinfo_drm);
 
   gst_query_add_allocation_pool (query, GST_BUFFER_POOL (pool),
-      self->vinfo.size, 2, 0);
+      self->vinfo_drm.vinfo.size, 2, 0);
   gst_query_add_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL);
 
   return GST_VIDEO_ENCODER_CLASS (parent_class)->propose_allocation (encoder,
@@ -304,7 +304,7 @@ gst_v4l2_codec_h264_enc_buffers_allocation (GstVideoEncoder * encoder)
   }
 
   self->sink_pool =
-      gst_v4l2_codec_pool_new (self->sink_allocator, &self->vinfo);
+      gst_v4l2_codec_pool_new (self->sink_allocator, &self->vinfo_drm);
 
   self->src_allocator = gst_v4l2_codec_encoder_allocator_new (self->encoder,
       GST_PAD_SRC, 4);
@@ -315,7 +315,8 @@ gst_v4l2_codec_h264_enc_buffers_allocation (GstVideoEncoder * encoder)
     return FALSE;
   }
 
-  self->src_pool = gst_v4l2_codec_pool_new (self->src_allocator, &self->vinfo);
+  self->src_pool = gst_v4l2_codec_pool_new (self->src_allocator,
+      &self->vinfo_drm);
 
   return TRUE;
 }
@@ -809,7 +810,7 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
 
   gst_v4l2_codec_h264_enc_reset_allocation (self);
 
-  if (!gst_v4l2_encoder_set_src_fmt (self->encoder, &self->vinfo,
+  if (!gst_v4l2_encoder_set_src_fmt (self->encoder, &self->vinfo_drm,
           V4L2_PIX_FMT_H264_SLICE)) {
     GST_ELEMENT_ERROR (self, CORE, NEGOTIATION, ("Unsupported pixel format"),
         ("No support for %ux%u format H264", state->info.width,
@@ -817,8 +818,8 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
     return FALSE;
   }
 
-  if (!gst_v4l2_encoder_select_sink_format (self->encoder, &state->info,
-          &self->vinfo)) {
+  if (!gst_v4l2_encoder_select_sink_format (self->encoder, state->caps,
+          &self->vinfo_drm)) {
     GST_ELEMENT_ERROR (self, CORE, NEGOTIATION,
         ("Failed to configure H264 encoder"),
         ("gst_v4l2_encoder_select_sink_format() failed: %s",
@@ -987,8 +988,9 @@ gst_v4l2_codec_h264_enc_copy_input_buffer (GstV4l2CodecH264Enc * self,
   GstBuffer *buffer;
   GstFlowReturn flow_ret;
 
-  gst_video_info_set_format (&src_vinfo, GST_VIDEO_INFO_FORMAT (&self->vinfo),
-      self->width, self->height);
+  gst_video_info_set_format (&src_vinfo,
+      GST_VIDEO_INFO_FORMAT (&self->vinfo_drm.vinfo), self->width,
+      self->height);
 
   flow_ret = gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (self->sink_pool),
       &buffer, NULL);
@@ -1008,7 +1010,8 @@ gst_v4l2_codec_h264_enc_copy_input_buffer (GstV4l2CodecH264Enc * self,
           frame->input_buffer, GST_MAP_READ))
     goto fail;
 
-  if (!gst_video_frame_map (&dest_frame, &self->vinfo, buffer, GST_MAP_WRITE)) {
+  if (!gst_video_frame_map (&dest_frame, &self->vinfo_drm.vinfo, buffer,
+          GST_MAP_WRITE)) {
     gst_video_frame_unmap (&dest_frame);
     goto fail;
   }
