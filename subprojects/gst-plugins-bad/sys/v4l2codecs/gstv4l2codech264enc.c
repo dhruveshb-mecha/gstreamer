@@ -56,7 +56,7 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
         "width = (int) [ 1, MAX ], " "height = (int) [ 1, MAX ], "
         "stream-format = (string) byte-stream, "
         "alignment = (string) au, "
-        "profile = (string) { main, constrained-baseline, baseline}")
+        "profile = (string) { main, constrained-baseline, baseline, high}")
     );
 
 /* Maximum sizes for common headers (in bits) */
