@@ -202,7 +202,7 @@ failed:
   /* If buffer allocation failed remove them all either by
    * calling delete_buffers IOCTL if the driver support it,
    * either by using legacy request_buf IOCTL with 0 has parameter */
-  if (gst_v4l2_decoder_has_remove_bufs (decoder)) {
+  if (decoder && gst_v4l2_decoder_has_remove_bufs (decoder)) {
     while (i-- && (buf = g_queue_pop_tail (&self->pool))) {
       gst_v4l2_decoder_remove_buffers (decoder, direction, buf->index, 1);
       gst_v4l2_codec_buffer_free (buf);
@@ -228,7 +228,7 @@ gst_v4l2_codec_allocator_dispose (GObject * object)
   GstV4l2CodecBuffer *buf;
 
   while ((buf = g_queue_pop_head (&self->pool))) {
-    if (gst_v4l2_decoder_has_remove_bufs (decoder)) {
+    if (decoder && gst_v4l2_decoder_has_remove_bufs (decoder)) {
       gst_v4l2_decoder_remove_buffers (decoder, direction, buf->index, 1);
     }
     gst_v4l2_codec_buffer_free (buf);
@@ -371,15 +371,17 @@ gst_v4l2_codec_allocator_detach (GstV4l2CodecAllocator * self)
   GST_OBJECT_LOCK (self);
   if (!self->detached) {
     self->detached = TRUE;
-    if (!gst_v4l2_decoder_has_remove_bufs (decoder)) {
-      gst_v4l2_decoder_request_buffers (decoder, self->direction, 0);
-    } else {
-      GstV4l2CodecBuffer *buf;
+    if (decoder) {
+      if (!gst_v4l2_decoder_has_remove_bufs (decoder)) {
+        gst_v4l2_decoder_request_buffers (decoder, self->direction, 0);
+      } else {
+        GstV4l2CodecBuffer *buf;
 
-      while ((buf = g_queue_pop_tail (&self->pool))) {
-        gst_v4l2_decoder_remove_buffers (decoder, self->direction,
-            buf->index, 1);
-        gst_v4l2_codec_buffer_free (buf);
+        while ((buf = g_queue_pop_tail (&self->pool))) {
+          gst_v4l2_decoder_remove_buffers (decoder, self->direction,
+              buf->index, 1);
+          gst_v4l2_codec_buffer_free (buf);
+        }
       }
     }
   }
