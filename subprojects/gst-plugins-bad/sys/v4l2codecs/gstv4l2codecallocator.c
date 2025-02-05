@@ -234,9 +234,9 @@ gst_v4l2_codec_allocator_dispose (GObject * object)
     gst_v4l2_codec_buffer_free (buf);
   }
 
-  if (self->decoder) {
+  if (decoder) {
     gst_v4l2_codec_allocator_detach (self);
-    gst_clear_object (&self->decoder);
+    gst_clear_object (&decoder);
   }
 
   G_OBJECT_CLASS (gst_v4l2_codec_allocator_parent_class)->dispose (object);
@@ -372,12 +372,12 @@ gst_v4l2_codec_allocator_detach (GstV4l2CodecAllocator * self)
   if (!self->detached) {
     self->detached = TRUE;
     if (!gst_v4l2_decoder_has_remove_bufs (decoder)) {
-      gst_v4l2_decoder_request_buffers (self->decoder, self->direction, 0);
+      gst_v4l2_decoder_request_buffers (decoder, self->direction, 0);
     } else {
       GstV4l2CodecBuffer *buf;
 
       while ((buf = g_queue_pop_tail (&self->pool))) {
-        gst_v4l2_decoder_remove_buffers (self->decoder, self->direction,
+        gst_v4l2_decoder_remove_buffers (decoder, self->direction,
             buf->index, 1);
         gst_v4l2_codec_buffer_free (buf);
       }
