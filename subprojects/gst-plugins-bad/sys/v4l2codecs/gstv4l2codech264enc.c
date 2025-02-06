@@ -521,8 +521,13 @@ gst_v4l2_codec_h264_enc_init_sps (GstV4l2CodecH264Enc * self,
   sps->num_ref_frames = 1;
   sps->num_ref_frames_in_pic_order_cnt_cycle = 2;
 
-  /* TODO Document */
-  sps->pic_order_cnt_type = 2;
+  /*
+   * The Rockchip VEPU540 and Rockchip VEPU580 both are using a
+   * pic_order_cnt_type = 0, which is used to write the pic_order_cnt_lsb into
+   * the slice header. Thus, it is now hard-coded to 0, but it may be necessary
+   * to change this by a driver for different hardware.
+   */
+  sps->pic_order_cnt_type = 0;
 
   /* TODO Document */
   sps->log2_max_frame_num_minus4 = 12;
