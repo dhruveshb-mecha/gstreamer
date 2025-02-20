@@ -101,6 +101,12 @@ struct _GstV4l2CodecH264Enc
   GstH264PPS pps;
 
   unsigned int idr_pic_id;
+
+  /*
+   * frame_num is distinct from system_frame_number as frame_num counts in
+   * decode order while system_frame_number counts in presentation order.
+   */
+  guint16 frame_num;
 };
 
 G_DEFINE_ABSTRACT_TYPE (GstV4l2CodecH264Enc, gst_v4l2_codec_h264_enc,
@@ -1158,20 +1164,18 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
       encode_params->slice_type = V4L2_H264_SLICE_TYPE_I;
       encode_params->nalu_type = V4L2_H264_NAL_CODED_SLICE_IDR_PIC;
       encode_params->idr_pic_id = self->idr_pic_id;
-      encode_params->frame_num = 0;
       encode_params->nal_reference_idc = 1;
       break;
     case GstH264Inter:
     default:
       encode_params->slice_type = V4L2_H264_SLICE_TYPE_P;
       encode_params->nalu_type = V4L2_H264_NAL_CODED_SLICE_NON_IDR_PIC;
-      encode_params->reference_ts = self->reference_timestamp;
-      encode_params->frame_num++;
-      encode_params->frame_num %=
-          (1 << (self->sps.log2_max_frame_num_minus4 + 4));
       encode_params->nal_reference_idc = 2;
       break;
   }
+
+  encode_params->frame_num = self->frame_num;
+  encode_params->reference_ts = self->reference_timestamp;
 
   encode_params->pic_parameter_set_id = 0;
   encode_params->cabac_init_idc = 0;
@@ -1275,6 +1279,29 @@ gst_v4l2_codec_h264_enc_v4l2_set_sps_pps (GstV4l2CodecH264Enc * self)
   return TRUE;
 }
 
+static gint
+gst_v4l2_codec_h264_enc_get_next_frame_num (GstH264Encoder * encoder,
+    GstH264Frame * h264_frame)
+{
+  GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
+  gint max_frame_num = (self->sps.log2_max_frame_num_minus4 + 4) << 1;
+  gint frame_num;
+
+  /*
+   * Assume that frames are pushed in decoding order into the encoder as put
+   * into the bitstream. If the video encoder is able to internally reorder the
+   * frames, the pic_order_cnt may be set, but the frame_num has to be set after
+   * the reordering is done.
+   */
+  if (h264_frame->type == GstH264Keyframe) {
+    frame_num = 0;
+  } else {
+    frame_num = (self->frame_num + 1) % max_frame_num;
+  }
+
+  return frame_num;
+}
+
 static GstFlowReturn
 gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
     GstH264Frame * h264_frame)
@@ -1331,6 +1358,9 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
         ("Failed to allocate a media request object."), (NULL));
     goto done;
   }
+
+  self->frame_num =
+      gst_v4l2_codec_h264_enc_get_next_frame_num (encoder, h264_frame);
 
   gst_v4l2_codec_h264_enc_fill_encode_params (encoder, &encode_params,
       h264_frame);
