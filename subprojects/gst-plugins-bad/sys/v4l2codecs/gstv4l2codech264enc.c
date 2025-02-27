@@ -94,7 +94,6 @@ struct _GstV4l2CodecH264Enc
   GstV4l2CodecPool *sink_pool;
   GstV4l2CodecPool *src_pool;
 
-  gboolean first_frame;
   guint64 reference_timestamp;
 
   GstH264SPS sps;
@@ -856,14 +855,6 @@ gst_v4l2_codec_h264_enc_set_format (GstVideoEncoder * encoder,
   self->width_in_macroblocks = (self->width + 15) / 16;
   self->height_in_macroblocks = (self->height + 15) / 16;
 
-  /*
-   * FIXME first_frame is used to control if the SPS and PPS need to be sent.
-   * However, the SPS and PPS need to be send on every IDR and sending them only
-   * for the first frame is wrong. Thus the variable name needs to be changed
-   * and it must be set for every IDR.
-   */
-  self->first_frame = TRUE;
-
   if (self->output_state)
     gst_video_codec_state_unref (self->output_state);
 
@@ -1319,7 +1310,7 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
   struct v4l2_ctrl_h264_encode_params encode_params;
   struct v4l2_ctrl_h264_encode_rc encode_rc;
 
-  if (self->first_frame) {
+  if (h264_frame->type == GstH264Keyframe) {
     codec_data = gst_buffer_new_and_alloc (38 + SPS_SIZE + PPS_SIZE);
     if (!gst_v4l2_codec_h264_enc_set_codec_data (venc, codec_data, &data_size)) {
       GST_ELEMENT_ERROR (self, RESOURCE, NO_SPACE_LEFT,
@@ -1400,11 +1391,17 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
 
   resized_buffer = gst_buffer_copy_region (frame->output_buffer,
       GST_BUFFER_COPY_MEMORY | GST_BUFFER_COPY_DEEP, 0, bytesused);
-  if (self->first_frame) {
+
+  /*
+   * TODO:
+   * At the moment the SPS and PPS ID is always 0 but encoders are encouraged to
+   * change the ID once SPS or PPS differ from the prev. SPS/PPS instead of
+   * reusing the same ID which trigger a value update during decode.
+   */
+  if (h264_frame->type == GstH264Keyframe) {
     gst_buffer_append (codec_data, resized_buffer);
     gst_buffer_replace (&frame->output_buffer, codec_data);
     gst_buffer_unref (codec_data);
-    self->first_frame = FALSE;
   } else {
     gst_buffer_replace (&frame->output_buffer, resized_buffer);
     gst_buffer_unref (resized_buffer);
