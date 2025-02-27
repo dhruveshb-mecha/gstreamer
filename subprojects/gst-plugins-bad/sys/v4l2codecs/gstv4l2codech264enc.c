@@ -94,6 +94,12 @@ struct _GstV4l2CodecH264Enc
   GstV4l2CodecPool *sink_pool;
   GstV4l2CodecPool *src_pool;
 
+  /*
+   * TODO Currently the element only handles a single reference frame, which is
+   * the previous frame. Rework the reference frame handling to actually handle
+   * a list of reference frames.
+   */
+#define MAX_NUM_REF_FRAMES 1
   guint64 reference_timestamp;
 
   GstH264SPS sps;
@@ -523,7 +529,12 @@ gst_v4l2_codec_h264_enc_init_sps (GstV4l2CodecH264Enc * self,
   sps->pic_width_in_mbs_minus1 = self->width_in_macroblocks - 1;
   sps->pic_height_in_map_units_minus1 = self->height_in_macroblocks - 1;
 
-  sps->num_ref_frames = 1;
+  /*
+   * The driver may use max_num_ref_frame for allocating buffers for keeping the
+   * reconstructed frames. Make sure that num_ref_frames is set properly to
+   * avoid excessive memory waste.
+   */
+  sps->num_ref_frames = MAX_NUM_REF_FRAMES;
   sps->num_ref_frames_in_pic_order_cnt_cycle = 2;
 
   /*
@@ -1407,7 +1418,7 @@ gst_v4l2_codec_h264_enc_encode_frame (GstH264Encoder * encoder,
     gst_buffer_unref (resized_buffer);
   }
 
-  /* save last reference frame */
+  /* Keep buffer as a reference buffer. */
   self->reference_timestamp = (guint64) frame->system_frame_number * 1000;
 
   /*
