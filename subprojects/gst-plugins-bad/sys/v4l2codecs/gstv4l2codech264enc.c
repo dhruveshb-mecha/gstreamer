@@ -1159,7 +1159,6 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
       encode_params->nalu_type = V4L2_H264_NAL_CODED_SLICE_IDR_PIC;
       encode_params->idr_pic_id = self->idr_pic_id;
       encode_params->frame_num = 0;
-      encode_params->nalu_type = 5;
       encode_params->nal_reference_idc = 1;
       break;
     case GstH264Inter:
@@ -1170,7 +1169,6 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
       encode_params->frame_num++;
       encode_params->frame_num %=
           (1 << (self->sps.log2_max_frame_num_minus4 + 4));
-      encode_params->nalu_type = 1;
       encode_params->nal_reference_idc = 2;
       break;
   }
