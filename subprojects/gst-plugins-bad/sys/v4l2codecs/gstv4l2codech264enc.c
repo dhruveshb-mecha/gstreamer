@@ -522,18 +522,27 @@ gst_v4l2_codec_h264_enc_init_sps (GstV4l2CodecH264Enc * self,
   sps->num_ref_frames_in_pic_order_cnt_cycle = 2;
 
   /*
-   * The Rockchip VEPU540 and Rockchip VEPU580 both are using a
-   * pic_order_cnt_type = 0, which is used to write the pic_order_cnt_lsb into
-   * the slice header. Thus, it is now hard-coded to 0, but it may be necessary
-   * to change this by a driver for different hardware.
+   * pic_order_cnt_type specifies how pic_order_cnt is handled.
+   *
+   * If Type 0 is used, pic_order_cnt is calculated based on pic_order_cnt_lsb
+   * in the slice header, which has to be written by the encoder.
+   *
+   * If Type 2 is used, the encoder must not write pic_order_cnt_lsb, but the
+   * decoder infers the pic_order_cnt based on frame_num.
+   *
+   * The used type may depend on the encoded stream and the capabilities of the
+   * used encoder hardware.
    */
   sps->pic_order_cnt_type = 0;
 
-  /* TODO Document */
-  sps->log2_max_frame_num_minus4 = 12;
-
-  /* TODO Document */
+  /*
+   * Wraparound value for the pic_order_cnt, which may be limited by the
+   * capabilities of the encoder hardware.
+   */
   sps->log2_max_pic_order_cnt_lsb_minus4 = 0;
+
+  /* The wraparound for frame_num. */
+  sps->log2_max_frame_num_minus4 = 12;
 
   /* TODO Document */
   sps->direct_8x8_inference_flag = 1;
