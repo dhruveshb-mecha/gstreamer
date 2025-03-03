@@ -386,13 +386,16 @@ sps_from_v4l2 (GstH264SPS * to, struct v4l2_ctrl_h264_sps *from)
   to->chroma_format_idc = from->chroma_format_idc;
   to->pic_width_in_mbs_minus1 = from->pic_width_in_mbs_minus1;
   to->pic_height_in_map_units_minus1 = from->pic_height_in_map_units_minus1;
+
   to->num_ref_frames = from->max_num_ref_frames;
+
+  to->pic_order_cnt_type = from->pic_order_cnt_type;
   to->num_ref_frames_in_pic_order_cnt_cycle =
       from->num_ref_frames_in_pic_order_cnt_cycle;
-  to->pic_order_cnt_type = from->pic_order_cnt_type;
-  to->log2_max_frame_num_minus4 = from->log2_max_frame_num_minus4;
   to->log2_max_pic_order_cnt_lsb_minus4 =
       from->log2_max_pic_order_cnt_lsb_minus4;
+
+  to->log2_max_frame_num_minus4 = from->log2_max_frame_num_minus4;
 
   if (from->flags & V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY)
     to->frame_mbs_only_flag = 1;
@@ -535,7 +538,6 @@ gst_v4l2_codec_h264_enc_init_sps (GstV4l2CodecH264Enc * self,
    * avoid excessive memory waste.
    */
   sps->num_ref_frames = MAX_NUM_REF_FRAMES;
-  sps->num_ref_frames_in_pic_order_cnt_cycle = 2;
 
   /*
    * pic_order_cnt_type specifies how pic_order_cnt is handled.
@@ -550,12 +552,15 @@ gst_v4l2_codec_h264_enc_init_sps (GstV4l2CodecH264Enc * self,
    * used encoder hardware.
    */
   sps->pic_order_cnt_type = 0;
-
-  /*
-   * Wraparound value for the pic_order_cnt, which may be limited by the
-   * capabilities of the encoder hardware.
-   */
-  sps->log2_max_pic_order_cnt_lsb_minus4 = 0;
+  if (sps->pic_order_cnt_type == 0)
+    /*
+     * Wraparound value for the pic_order_cnt, which may be limited by the
+     * capabilities of the encoder hardware.
+     */
+    sps->log2_max_pic_order_cnt_lsb_minus4 = 0;
+  if (sps->pic_order_cnt_type == 1)
+    /* TODO Document */
+    sps->num_ref_frames_in_pic_order_cnt_cycle = 2;
 
   /* The wraparound for frame_num. */
   sps->log2_max_frame_num_minus4 = 12;
@@ -1105,13 +1110,14 @@ gst_v4l2_codec_h264_enc_fill_sps (GstH264Encoder * encoder,
   sps->pic_height_in_map_units_minus1 = from->pic_height_in_map_units_minus1;
 
   sps->max_num_ref_frames = from->num_ref_frames;
-  sps->num_ref_frames_in_pic_order_cnt_cycle = from->num_ref_frames;
 
   sps->pic_order_cnt_type = from->pic_order_cnt_type;
-
-  sps->log2_max_frame_num_minus4 = from->log2_max_frame_num_minus4;
   sps->log2_max_pic_order_cnt_lsb_minus4 =
       from->log2_max_pic_order_cnt_lsb_minus4;
+  sps->num_ref_frames_in_pic_order_cnt_cycle =
+      from->num_ref_frames_in_pic_order_cnt_cycle;
+
+  sps->log2_max_frame_num_minus4 = from->log2_max_frame_num_minus4;
 
   if (from->gaps_in_frame_num_value_allowed_flag)
     sps->flags |= V4L2_H264_SPS_FLAG_GAPS_IN_FRAME_NUM_VALUE_ALLOWED;
