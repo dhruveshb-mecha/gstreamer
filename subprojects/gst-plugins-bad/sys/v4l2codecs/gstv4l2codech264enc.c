@@ -1185,7 +1185,7 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
   encode_params->frame_num = self->frame_num;
   encode_params->reference_ts = self->reference_timestamp;
 
-  encode_params->pic_parameter_set_id = 0;
+  encode_params->pic_parameter_set_id = self->pps.id;
   encode_params->cabac_init_idc = 0;
 
   encode_params->pic_init_qp_minus26 = self->pps.pic_init_qp_minus26;
