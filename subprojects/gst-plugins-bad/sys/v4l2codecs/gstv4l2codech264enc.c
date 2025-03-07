@@ -1170,15 +1170,15 @@ gst_v4l2_codec_h264_enc_fill_encode_params (GstH264Encoder * encoder,
        * require an IDR.
        */
       encode_params->slice_type = V4L2_H264_SLICE_TYPE_I;
-      encode_params->nalu_type = V4L2_H264_NAL_CODED_SLICE_IDR_PIC;
+      encode_params->nal_unit_type = V4L2_H264_NAL_CODED_SLICE_IDR_PIC;
       encode_params->idr_pic_id = self->idr_pic_id;
-      encode_params->nal_reference_idc = 1;
+      encode_params->nal_ref_idc = 1;
       break;
     case GstH264Inter:
     default:
       encode_params->slice_type = V4L2_H264_SLICE_TYPE_P;
-      encode_params->nalu_type = V4L2_H264_NAL_CODED_SLICE_NON_IDR_PIC;
-      encode_params->nal_reference_idc = 2;
+      encode_params->nal_unit_type = V4L2_H264_NAL_CODED_SLICE_NON_IDR_PIC;
+      encode_params->nal_ref_idc = 2;
       break;
   }
 
@@ -1202,7 +1202,6 @@ gst_v4l2_codec_h264_enc_fill_encode_rc (GstH264Encoder * encoder,
     struct v4l2_ctrl_h264_encode_rc *encode_rc, GstH264Frame * h264_frame)
 {
   GstV4l2CodecH264Enc *self = GST_V4L2_CODEC_H264_ENC (encoder);
-  guint64 bitrate;
 
   /* Rate Control */
   encode_rc->qp = h264_frame->qp;
@@ -1211,13 +1210,6 @@ gst_v4l2_codec_h264_enc_fill_encode_rc (GstH264Encoder * encoder,
 
   GST_TRACE_OBJECT (self, "using QP %d (min %d, max %d)",
       encode_rc->qp, encode_rc->qp_min, encode_rc->qp_max);
-
-  /*
-   * The target_bits is a rkvenc speciality since it allows to specify the
-   * target bitrate in the registers. I'm not sure how to address this, yet.
-   */
-  g_object_get (self, "bitrate", &bitrate, NULL);
-  encode_rc->target_bits = bitrate;
 }
 
 static gboolean
