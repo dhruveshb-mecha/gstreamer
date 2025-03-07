@@ -125,7 +125,7 @@ gst_h264_encoder_set_frame_type (GstH264Encoder * self,
     return GST_FLOW_OK;
   }
 
-  if ((frame->system_frame_number - priv->last_keyframe) >
+  if ((frame->system_frame_number - priv->last_keyframe) >=
       priv->keyframe_interval || frame->system_frame_number == 0) {
     /* Generate a keyframe */
     GST_DEBUG_OBJECT (self, "Generate a keyframe");
