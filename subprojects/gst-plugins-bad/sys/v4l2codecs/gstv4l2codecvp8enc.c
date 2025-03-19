@@ -71,7 +71,7 @@ struct _GstV4l2CodecVp8Enc
   GstVp8Encoder parent;
   GstV4l2Encoder *encoder;
   GstVideoCodecState *output_state;
-  GstVideoInfo vinfo;
+  GstVideoInfoDmaDrm vinfo_drm;
   gint width;
   gint height;
   guint qp_max, qp_min;
@@ -241,7 +241,7 @@ gst_v4l2_codec_vp8_enc_propose_allocation (GstVideoEncoder * encoder,
 {
   GstV4l2CodecVp8Enc *self = GST_V4L2_CODEC_VP8_ENC (encoder);
 
-  gst_query_add_allocation_pool (query, NULL, self->vinfo.size, 2, 0);
+  gst_query_add_allocation_pool (query, NULL, self->vinfo_drm.vinfo.size, 2, 0);
   gst_query_add_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL);
 
   return GST_VIDEO_ENCODER_CLASS (parent_class)->propose_allocation (encoder,
@@ -268,7 +268,7 @@ gst_v4l2_codec_vp8_enc_buffers_allocation (GstVideoEncoder * encoder)
   }
 
   self->sink_pool =
-      gst_v4l2_codec_pool_new (self->sink_allocator, &self->vinfo);
+      gst_v4l2_codec_pool_new (self->sink_allocator, &self->vinfo_drm);
 
   self->src_allocator = gst_v4l2_codec_encoder_allocator_new (self->encoder,
       GST_PAD_SRC, 4);
@@ -279,7 +279,8 @@ gst_v4l2_codec_vp8_enc_buffers_allocation (GstVideoEncoder * encoder)
     return FALSE;
   }
 
-  self->src_pool = gst_v4l2_codec_pool_new (self->src_allocator, &self->vinfo);
+  self->src_pool = gst_v4l2_codec_pool_new (self->src_allocator,
+      &self->vinfo_drm);
 
   return TRUE;
 }
@@ -298,7 +299,7 @@ gst_v4l2_codec_vp8_enc_set_format (GstVideoEncoder * encoder,
 
   gst_v4l2_codec_vp8_enc_reset_allocation (self);
 
-  if (!gst_v4l2_encoder_set_src_fmt (self->encoder, &state->info,
+  if (!gst_v4l2_encoder_set_src_fmt (self->encoder, &self->vinfo_drm,
           V4L2_PIX_FMT_VP8_FRAME)) {
     GST_ELEMENT_ERROR (self, CORE, NEGOTIATION, ("Unsupported pixel format"),
         ("No support for %ux%u format VP8", state->info.width,
@@ -306,8 +307,8 @@ gst_v4l2_codec_vp8_enc_set_format (GstVideoEncoder * encoder,
     return FALSE;
   }
 
-  if (!gst_v4l2_encoder_select_sink_format (self->encoder, &state->info,
-          &self->vinfo)) {
+  if (!gst_v4l2_encoder_select_sink_format (self->encoder, state->caps,
+          &self->vinfo_drm)) {
     GST_ELEMENT_ERROR (self, CORE, NEGOTIATION,
         ("Failed to configure VP8 encoder"),
         ("gst_v4l2_encoder_select_sink_format() failed: %s",
@@ -444,7 +445,8 @@ gst_v4l2_codec_vp8_enc_copy_input_buffer (GstV4l2CodecVp8Enc * self,
   GstBuffer *buffer;
   GstFlowReturn flow_ret;
 
-  gst_video_info_set_format (&src_vinfo, GST_VIDEO_INFO_FORMAT (&self->vinfo),
+  gst_video_info_set_format (&src_vinfo,
+      GST_VIDEO_INFO_FORMAT (&self->vinfo_drm.vinfo),
       self->width, self->height);
 
   flow_ret = gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (self->sink_pool),
@@ -465,7 +467,8 @@ gst_v4l2_codec_vp8_enc_copy_input_buffer (GstV4l2CodecVp8Enc * self,
           frame->input_buffer, GST_MAP_READ))
     goto fail;
 
-  if (!gst_video_frame_map (&dest_frame, &self->vinfo, buffer, GST_MAP_WRITE)) {
+  if (!gst_video_frame_map (&dest_frame, &self->vinfo_drm.vinfo, buffer,
+          GST_MAP_WRITE)) {
     gst_video_frame_unmap (&dest_frame);
     goto fail;
   }
