@@ -6,7 +6,7 @@
 Name:           gstreamer
 Version:        %{project_version}
 Release:        %{snapshot_release}%{?dist}
-Summary:        GStreamer multimedia framework with h264 stateless encoder support
+Summary:        GStreamer multimedia framework with camera preview support
 License:        LGPL-2.0-or-later
 URL:            https://gitlab.freedesktop.org/gstreamer/gstreamer
 Source0:        %{name}-%{commit}.tar.gz
@@ -26,6 +26,13 @@ BuildRequires:  libpng-devel
 BuildRequires:  zlib-devel
 BuildRequires:  bzip2-devel
 BuildRequires:  libgudev-devel
+
+# Preview support
+BuildRequires:  wayland-devel
+BuildRequires:  wayland-protocols-devel
+BuildRequires:  libdrm-devel
+BuildRequires:  mesa-libEGL-devel
+BuildRequires:  mesa-libGLES-devel
 
 Requires:       glib2 >= 2.62
 
@@ -61,17 +68,29 @@ meson setup builddir \
   -Dexamples=disabled \
   -Dtests=disabled \
   -Dtools=enabled \
-  -Dgst-plugins-base:videoconvertscale=enabled \
+  \
+  -Dgst-plugins-base:app=enabled \
+  -Dgst-plugins-base:video=enabled \
+  -Dgst-plugins-base:playback=enabled \
   -Dgst-plugins-base:typefind=enabled \
+  -Dgst-plugins-base:videoconvertscale=enabled \
+  \
   -Dgst-plugins-good:jpeg=enabled \
   -Dgst-plugins-good:matroska=enabled \
+  \
+  -Dgst-plugins-bad:videoparsers=enabled \
   -Dgst-plugins-bad:v4l2codecs=enabled \
-  -Dgst-plugins-bad:videoparsers=enabled
+  -Dgst-plugins-bad:waylandsink=enabled \
+  -Dgst-plugins-bad:kms=enabled
 
 meson compile -C builddir %{?_smp_mflags}
 
 %install
 DESTDIR=%{buildroot} meson install -C builddir
+
+# Validate required plugins exist
+test -f %{buildroot}/opt/gstreamer/lib64/gstreamer-1.0/libgstvideoconvertscale.so || \
+  { echo "FATAL: videoconvertscale missing"; exit 1; }
 
 install -d %{buildroot}%{_sysconfdir}/profile.d
 cat > %{buildroot}%{_sysconfdir}/profile.d/gstreamer.sh <<'EOF'
@@ -80,7 +99,6 @@ if [ -z "${_COMET_GSTREAMER_SETUP_DONE:-}" ]; then
   export PKG_CONFIG_PATH=/opt/gstreamer/lib64/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}
   export GST_PLUGIN_PATH=/opt/gstreamer/lib64/gstreamer-1.0${GST_PLUGIN_PATH:+:$GST_PLUGIN_PATH}
   export GST_PLUGIN_PATH_1_0=/opt/gstreamer/lib64/gstreamer-1.0${GST_PLUGIN_PATH_1_0:+:$GST_PLUGIN_PATH_1_0}
-  export GST_PLUGIN_SYSTEM_PATH=
   export GST_PLUGIN_SCANNER=/opt/gstreamer/libexec/gstreamer-1.0/gst-plugin-scanner
   export GST_PLUGIN_SCANNER_1_0=/opt/gstreamer/libexec/gstreamer-1.0/gst-plugin-scanner
   export _COMET_GSTREAMER_SETUP_DONE=1
@@ -113,4 +131,6 @@ EOF
 
 %changelog
 * Mon May 25 2026 Mecha Camera Build <build@mecha.local> - %{version}-%{release}
-- Package h264-stateless-encoder build from commit %{commit}.
+- Added Wayland and KMS sinks for camera preview.
+- Enabled playback and video base plugins.
+- Kept explicit plugin selection for embedded deployments.

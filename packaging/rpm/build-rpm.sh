@@ -123,6 +123,10 @@ if [[ "$BUILD_MODE" == "binary" ]]; then
     --define "_topdir $TOPDIR" \
     --define "_tmppath $TOPDIR/tmp" \
     --define "__brp_add_determinism /bin/true" \
+    --define "project_version $version" \
+    --define "snapshot_release $release" \
+    --define "commit $commit" \
+    --define "shortcommit $shortcommit" \
     "$srpm"
 fi
 
