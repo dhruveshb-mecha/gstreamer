@@ -29,9 +29,7 @@ BuildRequires:  libgudev-devel
 
 # Preview support
 BuildRequires:  wayland-devel
-BuildRequires:  wayland-protocols-devel
 BuildRequires:  libdrm-devel
-BuildRequires:  mesa-libEGL-devel
 BuildRequires:  mesa-libGLES-devel
 
 Requires:       glib2 >= 2.62
@@ -69,19 +67,22 @@ meson setup builddir \
   -Dtests=disabled \
   -Dtools=enabled \
   \
-  -Dgst-plugins-base:app=enabled \
-  -Dgst-plugins-base:video=enabled \
-  -Dgst-plugins-base:playback=enabled \
-  -Dgst-plugins-base:typefind=enabled \
+  -Dgst-plugins-base:gl=enabled \
+  -Dgst-plugins-base:drm=enabled \
   -Dgst-plugins-base:videoconvertscale=enabled \
+  -Dgst-plugins-base:typefind=enabled \
   \
+  -Dgst-plugins-good:v4l2=enabled \
+  -Dgst-plugins-good:gtk3=enabled \
   -Dgst-plugins-good:jpeg=enabled \
   -Dgst-plugins-good:matroska=enabled \
   \
-  -Dgst-plugins-bad:videoparsers=enabled \
+  -Dgst-plugins-bad:wayland=enabled \
+  -Dgst-plugins-bad:kms=enabled \
+  -Dgst-plugins-bad:gtk3=enabled \
+  -Dgst-plugins-bad:drm=enabled \
   -Dgst-plugins-bad:v4l2codecs=enabled \
-  -Dgst-plugins-bad:waylandsink=enabled \
-  -Dgst-plugins-bad:kms=enabled
+  -Dgst-plugins-bad:videoparsers=enabled
 
 meson compile -C builddir %{?_smp_mflags}
 
