@@ -1,3 +1,4 @@
+
 %{!?project_version:%global project_version 1.26.0}
 %{!?snapshot_release:%global snapshot_release 79.git1eb6cfc}
 %{!?commit:%global commit 1eb6cfc1ea793f1f62e95202204a5e53fe68d3ff}
@@ -63,25 +64,51 @@ meson setup builddir \
   -Dbad=enabled \
   -Dugly=disabled \
   -Ddoc=disabled \
+  -Dgstreamer:dbghelp=disabled \
+  -Dintrospection=disabled \
+  -Dgobject-introspection:doctool=disabled \
   -Dexamples=disabled \
+  -Dgst-plugins-good:autodetect=enabled \
   -Dtests=disabled \
   -Dtools=enabled \
   \
+  -Dgst-plugins-base:encoding=enabled \
+  -Dgst-plugins-base:playback=enabled \
+  -Dgst-plugins-base:audiorate=enabled \
+  -Dgst-plugins-base:videorate=enabled \
+  -Dgst-plugins-base:volume=enabled \
+  -Dgst-plugins-good:multifile=enabled \
   -Dgst-plugins-base:gl=enabled \
   -Dgst-plugins-base:drm=enabled \
   -Dgst-plugins-base:videoconvertscale=enabled \
   -Dgst-plugins-base:typefind=enabled \
+  -Dgst-plugins-base:ogg=enabled \
+  -Dgst-plugins-base:app=enabled \
+  -Dgst-plugins-good:videocrop=enabled \
+  -Dgst-plugins-base:audioresample=enabled \
+  -Dgst-plugins-base:audioconvert=enabled \
+  -Dgst-plugins-base:videoconvertscale=enabled \
+  -Dgst-plugins-base:encoding=enabled \
+  -Dgst-plugins-base:playback=enabled \
+  -Dgst-plugins-base:typefind=enabled \
+  -Dgst-plugins-base:ogg=enabled \
+  -Dgst-plugins-base:volume=enabled \
   \
   -Dgst-plugins-good:v4l2=enabled \
   -Dgst-plugins-good:gtk3=enabled \
   -Dgst-plugins-good:jpeg=enabled \
   -Dgst-plugins-good:matroska=enabled \
+  -Dgst-plugins-good:avi=enabled \
+  -Dgst-plugins-good:isomp4=enabled \
+  -Dgst-plugins-good:rtp=enabled \
+  -Dgst-plugins-good:udp=enabled \
   \
   -Dgst-plugins-bad:wayland=enabled \
   -Dgst-plugins-bad:kms=enabled \
   -Dgst-plugins-bad:gtk3=enabled \
   -Dgst-plugins-bad:drm=enabled \
   -Dgst-plugins-bad:v4l2codecs=enabled \
+  -Dgst-plugins-bad:camerabin2=enabled \
   -Dgst-plugins-bad:videoparsers=enabled
 
 meson compile -C builddir %{?_smp_mflags}
@@ -131,7 +158,7 @@ EOF
 %postun -p /sbin/ldconfig
 
 %changelog
-* Mon May 25 2026 Mecha Camera Build <build@mecha.local> - %{version}-%{release}
+* 23 June 2026 Mecha Camera Build <dhruveshb@mechasystem.com>
 - Added Wayland and KMS sinks for camera preview.
 - Enabled playback and video base plugins.
 - Kept explicit plugin selection for embedded deployments.
