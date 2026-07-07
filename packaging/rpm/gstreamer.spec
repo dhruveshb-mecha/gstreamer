@@ -27,6 +27,7 @@ BuildRequires:  libpng-devel
 BuildRequires:  zlib-devel
 BuildRequires:  bzip2-devel
 BuildRequires:  libgudev-devel
+BuildRequires: alsa-lib-devel
 
 # Preview support
 BuildRequires:  wayland-devel
@@ -84,15 +85,11 @@ meson setup builddir \
   -Dgst-plugins-base:typefind=enabled \
   -Dgst-plugins-base:ogg=enabled \
   -Dgst-plugins-base:app=enabled \
+  -Dgst-plugins-base:alsa=enabled \
   -Dgst-plugins-good:videocrop=enabled \
   -Dgst-plugins-base:audioresample=enabled \
   -Dgst-plugins-base:audioconvert=enabled \
-  -Dgst-plugins-base:videoconvertscale=enabled \
-  -Dgst-plugins-base:encoding=enabled \
-  -Dgst-plugins-base:playback=enabled \
   -Dgst-plugins-base:typefind=enabled \
-  -Dgst-plugins-base:ogg=enabled \
-  -Dgst-plugins-base:volume=enabled \
   \
   -Dgst-plugins-good:v4l2=enabled \
   -Dgst-plugins-good:gtk3=enabled \
@@ -102,6 +99,9 @@ meson setup builddir \
   -Dgst-plugins-good:isomp4=enabled \
   -Dgst-plugins-good:rtp=enabled \
   -Dgst-plugins-good:udp=enabled \
+  -Dgst-plugins-good:id3demux=enabled \
+  -Dgst-plugins-good:mpg123=enabled \
+  -Dgst-plugins-good:audioparsers=enabled \
   \
   -Dgst-plugins-bad:wayland=enabled \
   -Dgst-plugins-bad:kms=enabled \
@@ -119,6 +119,22 @@ DESTDIR=%{buildroot} meson install -C builddir
 # Validate required plugins exist
 test -f %{buildroot}/opt/gstreamer/lib64/gstreamer-1.0/libgstvideoconvertscale.so || \
   { echo "FATAL: videoconvertscale missing"; exit 1; }
+
+# Validate required plugins exist
+test -f %{buildroot}/opt/gstreamer/lib64/gstreamer-1.0/libgstid3demux.so || \
+  { echo "FATAL: id3demux missing"; exit 1; }
+
+# Validate required plugins exist
+test -f %{buildroot}/opt/gstreamer/lib64/gstreamer-1.0/libgstmpg123.so || \
+  { echo "FATAL: mpg123 missing"; exit 1; }
+
+# Validate required plugins exist
+test -f %{buildroot}/opt/gstreamer/lib64/gstreamer-1.0/libgstaudioparsers.so || \
+  { echo "FATAL: audioparsers missing"; exit 1; }
+
+# Validate required plugins exist
+test -f %{buildroot}/opt/gstreamer/lib64/gstreamer-1.0/libgstalsa.so || \
+  { echo "FATAL: alsa missing"; exit 1; }
 
 install -d %{buildroot}%{_sysconfdir}/profile.d
 cat > %{buildroot}%{_sysconfdir}/profile.d/gstreamer.sh <<'EOF'
@@ -158,7 +174,9 @@ EOF
 %postun -p /sbin/ldconfig
 
 %changelog
-* 23 June 2026 Mecha Camera Build <dhruveshb@mechasystem.com>
+* Mon Jul 7 2026 Mecha Camera Build <dhruveshb@mechasystem.com>
+- Added ALSA support for audio playback.
+- Enabled mpg123 and audioparsers plugins for audio decoding.
 - Added Wayland and KMS sinks for camera preview.
 - Enabled playback and video base plugins.
 - Kept explicit plugin selection for embedded deployments.
